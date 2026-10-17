@@ -749,7 +749,7 @@ function feedGo(n){ feedPage = n; renderFeed(); window.scrollTo(0,0); }
 async function renderFeed(){
   const mine = await loadPosts();
   let all = mine.concat(SEED);
-  if (currentTab === "media") all = all.filter(p => p.media);
+  if (currentTab === "media") all = all.filter(p => p.media || p.mediaType);
   if (currentTab === "replies") {
     const comments = await loadComments();
     const replies = [];
