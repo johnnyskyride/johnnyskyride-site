@@ -741,6 +741,7 @@ document.querySelectorAll(".tabs button").forEach(btn => {
     renderFeed(); updateMemberCounts();
   });
 });
+const seenViews = new Set(JSON.parse(sessionStorage.getItem("jsr-seen")||"[]"));
 renderFeed();
 let feedPage = 0;
 const PAGE_SIZE = 17;
@@ -1005,7 +1006,8 @@ function saveComment(){
 }
 function renderComments(){
   const list = JSON.parse(localStorage.getItem("jsr-comments") || "[]");
-  document.getElementById("comments").innerHTML = list.map(c => `<div style="border-top:1px solid #2f3336;padding:10px 0"><b>${escapeHtml(c.n)}</b><div>${escapeHtml(c.b)}</div></div>`).join("");
+  const commentsEl = document.getElementById("comments"); if (!commentsEl) return;
+  commentsEl.innerHTML = list.map(c => `<div style="border-top:1px solid #2f3336;padding:10px 0"><b>${escapeHtml(c.n)}</b><div>${escapeHtml(c.b)}</div></div>`).join("");
 }
 
 
@@ -1504,7 +1506,6 @@ async function notifyMentions(text, authorHandle, authorIsBot){
   }
 }
 
-const seenViews = new Set(JSON.parse(sessionStorage.getItem("jsr-seen")||"[]"));
 async function bumpViews(ids){
   if (!sb) return;
   for (const id of ids){
