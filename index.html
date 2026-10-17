@@ -922,7 +922,7 @@ async function addReply(id){
   renderFeed();
 }
 function escapeHtml(s){
-  return s.replace(/[&<>]/g, c => ({"&":"&","<":"<",">":">"}[c]));
+  return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 async function publish(){
   const box = document.getElementById("composer");
@@ -1032,15 +1032,56 @@ function renderComments(){
 }
 
 
-let artCover = "";
+// ---- Shared media helpers (owner uploads go to the public "media" bucket) ----
+function dataUrlToBlob(d){
+  const m = /^data:([^;,]+)?(;base64)?,([\s\S]*)$/.exec(d || "");
+  if (!m) return null;
+  const type = m[1] || "application/octet-stream";
+  const raw = m[2] ? atob(m[3]) : decodeURIComponent(m[3]);
+  const u = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) u[i] = raw.charCodeAt(i);
+  return new Blob([u], { type });
+}
+function extFor(type, name){
+  const known = {"image/jpeg":"jpg","image/png":"png","image/gif":"gif","image/webp":"webp","image/svg+xml":"svg","image/heic":"heic"}[type];
+  if (known) return known;
+  const fromName = name && name.includes(".") ? name.split(".").pop() : (type||"").split("/")[1];
+  return ((fromName||"bin").toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,5)) || "bin";
+}
+async function uploadMedia(path, blob){
+  const up = await sb.storage.from("media").upload(path, blob, { contentType: blob.type || "application/octet-stream", upsert: true });
+  if (up.error) throw up.error;
+  return sb.storage.from("media").getPublicUrl(path).data.publicUrl;
+}
+async function inlineImagesToMedia(html, prefix){
+  const found = [...new Set([...String(html||"").matchAll(/src="(data:[^"]+)"/g)].map(m => m[1]))];
+  let i = 0;
+  for (const d of found) {
+    const b = dataUrlToBlob(d); if (!b) continue;
+    const url = await uploadMedia(prefix + "-img" + (i++) + "." + extFor(b.type), b);
+    html = html.split(d).join(url);
+  }
+  return html;
+}
+async function shortHash(s){
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return [...new Uint8Array(buf)].slice(0, 8).map(x => x.toString(16).padStart(2,"0")).join("");
+}
+function ownerNow(){ return !!(sb && isOwnerSession(currentSession)); }
+
+// ---- Articles (public.articles: anyone reads, owner writes) ----
+let artCoverFile = null;
+let ARTICLES = [];
 function openEditor(){
+  if (!ownerNow()) { alert("Only the owner can write articles."); return; }
   document.getElementById("article-list").style.display = "none";
   document.getElementById("new-article").style.display = "none";
   document.getElementById("article-editor").style.display = "block";
   document.getElementById("art-title").value = "";
   document.getElementById("art-body").innerHTML = "";
   document.getElementById("art-cover-prev").innerHTML = "";
-  artCover = "";
+  document.getElementById("art-cover").value = "";
+  artCoverFile = null;
 }
 function cancelArticle(){
   document.getElementById("article-editor").style.display = "none";
@@ -1065,78 +1106,115 @@ document.querySelectorAll(".tool").forEach(b => b.addEventListener("click", () =
 }));
 document.getElementById("art-cover").addEventListener("change", e => {
   const f = e.target.files[0];
-  if (!f) return;
-  const r = new FileReader();
-  r.onload = () => {
-    artCover = r.result;
-    document.getElementById("art-cover-prev").innerHTML = '<img src="'+artCover+'" style="width:100%;max-height:220px;object-fit:cover;border-radius:12px">';
-  };
-  r.readAsDataURL(f);
+  artCoverFile = f || null;
+  if (!f) { document.getElementById("art-cover-prev").innerHTML = ""; return; }
+  document.getElementById("art-cover-prev").innerHTML = '<img src="'+URL.createObjectURL(f)+'" style="width:100%;max-height:220px;object-fit:cover;border-radius:12px">';
 });
-function loadArticles(){
-  try { return JSON.parse(localStorage.getItem("jsr-articles") || "[]"); }
-  catch { return []; }
+async function loadArticles(){
+  if (!sb) return ARTICLES;
+  const { data, error } = await sb.from("articles").select("id,title,body,cover,created_at").order("created_at", { ascending: false });
+  if (error) { console.error(error); return ARTICLES; }
+  ARTICLES = data || [];
+  return ARTICLES;
 }
-function publishArticle(){
+let publishingArticle = false;
+async function publishArticle(){
+  if (!ownerNow()) { alert("Only the owner can publish articles. Log in as the owner first."); return; }
+  if (publishingArticle) return;
   const title = document.getElementById("art-title").value.trim();
-  const body = document.getElementById("art-body").innerHTML.trim();
+  let body = document.getElementById("art-body").innerHTML.trim();
   if (!title || !body) return alert("Title and body.");
-  const list = loadArticles();
-  list.unshift({title, body, cover: artCover, at: Date.now()});
-  localStorage.setItem("jsr-articles", JSON.stringify(list));
-  cancelArticle();
+  publishingArticle = true;
+  try {
+    const id = "a" + Date.now();
+    let cover = null;
+    if (artCoverFile) cover = await uploadMedia("articles/" + id + "-cover." + extFor(artCoverFile.type, artCoverFile.name), artCoverFile);
+    body = await inlineImagesToMedia(body, "articles/" + id);
+    const { error } = await sb.from("articles").insert({ id, title, body, cover });
+    if (error) throw error;
+    cancelArticle();
+  } catch (e) {
+    alert("Could not publish: " + (e.message || e));
+  } finally { publishingArticle = false; }
 }
-function renderArticles(){
-  const list = loadArticles();
+async function renderArticles(){
   const box = document.getElementById("article-list");
+  if (!box) return;
+  const list = await loadArticles();
   if (!list.length) {
     box.innerHTML = '<div style="padding:40px 16px;color:#71767b;text-align:center">No articles yet.</div>';
     return;
   }
-  box.innerHTML = list.map((a,i) => `
-    <article class="art-card" onclick="readArticle(${i})">
+  box.innerHTML = list.map(a => `
+    <article class="art-card" onclick="readArticle('${a.id}')">
       ${a.cover ? '<img class="art-cover" src="'+a.cover+'" alt="">' : ''}
-      <div class="meta">${new Date(a.at).toLocaleDateString()}</div>
+      <div class="meta">${new Date(a.created_at).toLocaleDateString()}</div>
       <h2>${escapeHtml(a.title)}</h2>
     </article>`).join("");
 }
-function readArticle(i){
-  const a = loadArticles()[i];
+async function deleteArticle(id){
+  if (!ownerNow()) return;
+  if (!confirm("Delete this article and its comments?")) return;
+  const { error } = await sb.from("articles").delete().eq("id", id);
+  if (error) { alert("Could not delete: " + error.message); return; }
+  renderArticles();
+}
+function readArticle(id){
+  const a = ARTICLES.find(x => x.id === id);
+  if (!a) return renderArticles();
   document.getElementById("article-list").innerHTML = `
     <div class="art-read">
       <button onclick="renderArticles()" style="background:none;border:0;color:#ff6bb5;cursor:pointer;font-weight:700">← Articles</button>
+      <button class="owner-only" onclick="deleteArticle('${a.id}')" style="float:right;background:none;border:1px solid #2f3336;color:#71767b;border-radius:999px;padding:4px 12px;cursor:pointer">Delete</button>
       ${a.cover ? '<img class="art-cover" src="'+a.cover+'" alt="">' : ''}
       <h1>${escapeHtml(a.title)}</h1>
       <div class="body">${a.body}</div>
       <div id="art-comments" style="margin-top:16px"></div>
-      <div class="reply"><input id="art-reply" placeholder="Comment on this article" onkeydown="if(event.key==='Enter')addArtComment(${i})"><button class="rabbit-send" title="Send" aria-label="Send comment" onclick="addArtComment(${i})">🐇</button></div>
+      <div class="reply">
+        <div class="reply-row">
+          <textarea id="art-reply" class="reply-box" maxlength="280" rows="1" placeholder="Comment on this article" onkeydown="if(event.key==='Enter'&&event.ctrlKey){event.preventDefault();addArtComment('${a.id}')}"></textarea>
+          <button class="rabbit-send" title="Send" aria-label="Send comment" onclick="addArtComment('${a.id}')">🐇</button>
+        </div>
+      </div>
     </div>`;
-  renderArtComments(i);
+  renderArtComments(id);
 }
-function loadArtComments(){
-  try { return JSON.parse(localStorage.getItem("jsr-art-comments") || "{}"); }
-  catch { return {}; }
-}
-function renderArtComments(i){
-  const all = loadArtComments();
-  const cs = all[i] || [];
+
+// ---- Article comments (public.article_comments: same rules as post comments) ----
+async function renderArtComments(aid){
   const box = document.getElementById("art-comments");
-  if(!box) return;
-  box.innerHTML = cs.map(c => `<div class="comment"><b>${escapeHtml(c.n)}</b>${commentStar(c)} <span style="color:#71767b">@${escapeHtml(c.h)}</span><div>${escapeHtml(c.t)}</div></div>`).join("");
+  if (!box || !sb) return;
+  const { data, error } = await sb.from("article_comments").select("id,article_id,name,handle,avatar,body,bot,created_at").eq("article_id", aid).order("created_at", { ascending: true });
+  if (error) { console.error(error); return; }
+  const me = currentUser();
+  const myH = me ? String(me.handle||"").toLowerCase() : "";
+  box.innerHTML = (data||[]).map(r => {
+    const c = { n: r.name || r.handle, h: r.handle, bot: r.bot };
+    const canDel = ownerNow() || (myH && myH === String(r.handle||"").toLowerCase());
+    return `<div class="comment"><b style="cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">${escapeHtml(c.n)}</b>${commentStar(c)} <span style="color:#71767b;cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">@${escapeHtml(c.h)}</span>${canDel ? ` <button onclick="deleteArtComment('${r.id}','${aid}')" title="Delete comment" aria-label="Delete comment" style="background:none;border:0;color:#71767b;cursor:pointer;float:right">✕</button>` : ""}<div>${linkMentions(r.body)}</div></div>`;
+  }).join("");
 }
-async function addArtComment(i){
+async function addArtComment(aid){
   const session = sb ? (await sb.auth.getSession()).data.session : null;
   const me = session ? currentUser() : null;
   if(!session || !me){ alert("Log in to comment."); openAuth(); return; }
+  if(!me.bot && !me.confirmed && !me.owner){ alert("Confirm your email before commenting."); return; }
   const el = document.getElementById("art-reply");
-  const t = el.value.trim();
+  const t = el.value.trim().slice(0, 280);
   if(!t) return;
-  const all = loadArtComments();
-  (all[i] = all[i] || []).push({n:me.name, h:me.handle, t, owner: !!me.owner, bot: !!me.bot || isBot(me)});
-  localStorage.setItem("jsr-art-comments", JSON.stringify(all));
-  renderArtComments(i);
+  const entry = { id: "ac" + Date.now(), article_id: aid, name: me.name, handle: me.handle, avatar: me.avatar || "", body: t, bot: !me.owner && isBot(me) };
+  const { error } = await sb.from("article_comments").insert(entry);
+  if (error) { alert("Could not comment: " + error.message); return; }
   el.value = "";
+  renderArtComments(aid);
 }
+async function deleteArtComment(id, aid){
+  if(!confirm("Delete this comment?")) return;
+  const { error } = await sb.from("article_comments").delete().eq("id", id);
+  if (error) { alert("Could not delete: " + error.message); return; }
+  renderArtComments(aid);
+}
+
 
 
 function isOwner(){ return document.body.classList.contains("owner"); }
@@ -1189,37 +1267,127 @@ async function ownerLogin(){
 }
 function closeOwnerLogin(){ document.getElementById("owner-login").classList.remove("on"); }
 
-function loadImagery(){ try { return JSON.parse(localStorage.getItem("jsr-imagery")||"[]"); } catch { return []; } }
-function saveImagery(a){ localStorage.setItem("jsr-imagery", JSON.stringify(a)); }
-function renderImagery(){
+// ---- Imagery gallery (public.gallery: anyone reads, owner writes; files in media/gallery/) ----
+let GALLERY = [];
+async function loadImagery(){
+  if (!sb) return GALLERY;
+  const { data, error } = await sb.from("gallery").select("id,url,created_at").order("created_at", { ascending: true });
+  if (error) { console.error(error); return GALLERY; }
+  GALLERY = data || [];
+  return GALLERY;
+}
+async function renderImagery(){
   const grid = document.getElementById("imagery-grid");
   if(!grid) return;
+  const list = await loadImagery();
   grid.querySelectorAll(".dyn").forEach(n => n.remove());
   const add = grid.querySelector(".img-add");
-  loadImagery().forEach((src, i) => {
+  list.forEach(g => {
     const w = document.createElement("div");
     w.className = "img-wrap dyn";
-    w.innerHTML = `<img src="${src}" alt=""><button class="rm owner-only" onclick="removeImagery(${i})">✕</button>`;
+    w.innerHTML = `<img src="${g.url}" alt=""><button class="rm owner-only" onclick="removeImagery('${g.id}')">✕</button>`;
     if(add) grid.insertBefore(w, add); else grid.appendChild(w);
   });
 }
-function addImagery(input){
+async function addImagery(input){
   const files = Array.from(input.files||[]);
-  if(!files.length) return;
-  const list = loadImagery();
-  let left = files.length;
-  files.forEach(f => {
-    const r = new FileReader();
-    r.onload = () => { list.push(r.result); left--; if(left===0){ saveImagery(list); renderImagery(); } };
-    r.readAsDataURL(f);
-  });
   input.value = "";
-}
-function removeImagery(i){
-  const list = loadImagery();
-  list.splice(i,1);
-  saveImagery(list);
+  if(!files.length) return;
+  if (!ownerNow()) { alert("Only the owner can add images. Log in as the owner first."); return; }
+  const base = Date.now();
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    const id = "g" + base + "-" + i;
+    try {
+      const url = await uploadMedia("gallery/" + id + "." + extFor(f.type, f.name), f);
+      const { error } = await sb.from("gallery").insert({ id, url, created_at: new Date(base + i).toISOString() });
+      if (error) throw error;
+    } catch (e) { alert("Could not add " + f.name + ": " + (e.message || e)); }
+  }
   renderImagery();
+}
+async function removeImagery(id){
+  if (!ownerNow()) return;
+  const g = GALLERY.find(x => x.id === id);
+  const { error } = await sb.from("gallery").delete().eq("id", id);
+  if (error) { alert("Could not remove: " + error.message); return; }
+  const marker = "/object/public/media/";
+  if (g && g.url && g.url.includes(marker)) { try { await sb.storage.from("media").remove([decodeURIComponent(g.url.split(marker)[1])]); } catch {} }
+  renderImagery();
+}
+
+// ---- One-time move of this device's old local articles/gallery to the server (owner only) ----
+let migratedLocal = false;
+async function migrateLocalOwnerData(){
+  if (migratedLocal || !ownerNow()) return;
+  migratedLocal = true;
+  let changed = false;
+  // Articles
+  let local = [];
+  try { local = JSON.parse(localStorage.getItem("jsr-articles") || "[]"); } catch {}
+  if (Array.isArray(local) && local.length) {
+    try {
+      const ids = [];
+      for (const a of local) ids.push(a.at ? "a" + a.at : "a" + await shortHash((a.title||"") + (a.body||"")));
+      const { data: have, error } = await sb.from("articles").select("id").in("id", ids);
+      if (error) throw error;
+      const onServer = new Set((have||[]).map(r => r.id));
+      // keep old article comments (keyed by list position) under the new ids, so none are lost
+      let oldComments = {};
+      try { oldComments = JSON.parse(localStorage.getItem("jsr-art-comments") || "{}"); } catch {}
+      // first run only: map old position-keyed comments to the new article ids (positions shift once articles move)
+      if (!localStorage.getItem("jsr-art-comments-legacy") && Object.keys(oldComments).length) {
+        const legacy = {};
+        ids.forEach((id, i) => { if (oldComments[i] && oldComments[i].length) legacy[id] = oldComments[i]; });
+        localStorage.setItem("jsr-art-comments-legacy", JSON.stringify(legacy));
+      }
+      const remaining = [];
+      for (let i = 0; i < local.length; i++) {
+        const a = local[i], id = ids[i];
+        try {
+          if (!onServer.has(id)) {
+            let cover = a.cover || null;
+            if (cover && cover.startsWith("data:")) { const b = dataUrlToBlob(cover); cover = b ? await uploadMedia("articles/" + id + "-cover." + extFor(b.type), b) : null; }
+            const body = await inlineImagesToMedia(a.body || "", "articles/" + id);
+            const { error: e2 } = await sb.from("articles").insert({ id, title: a.title || "Untitled", body, cover, created_at: new Date(a.at || Date.now()).toISOString() });
+            if (e2 && e2.code !== "23505") throw e2;
+          }
+          changed = true;
+        } catch (e) { console.error("article migrate failed", e); remaining.push(a); }
+      }
+      if (remaining.length) localStorage.setItem("jsr-articles", JSON.stringify(remaining));
+      else localStorage.removeItem("jsr-articles");
+    } catch (e) { console.error("article migrate failed", e); }
+  }
+  // Gallery
+  let imgs = [];
+  try { imgs = JSON.parse(localStorage.getItem("jsr-imagery") || "[]"); } catch {}
+  if (Array.isArray(imgs) && imgs.length) {
+    try {
+      const ids = [];
+      for (const src of imgs) ids.push("g" + await shortHash(String(src)));
+      const { data: have, error } = await sb.from("gallery").select("id").in("id", ids);
+      if (error) throw error;
+      const onServer = new Set((have||[]).map(r => r.id));
+      const base = Date.now();
+      const remaining = [];
+      for (let i = 0; i < imgs.length; i++) {
+        const src = String(imgs[i]), id = ids[i];
+        try {
+          if (!onServer.has(id)) {
+            let url = src;
+            if (src.startsWith("data:")) { const b = dataUrlToBlob(src); if (!b) throw new Error("bad image data"); url = await uploadMedia("gallery/" + id + "." + extFor(b.type), b); }
+            const { error: e2 } = await sb.from("gallery").insert({ id, url, created_at: new Date(base + i).toISOString() });
+            if (e2 && e2.code !== "23505") throw e2;
+          }
+          changed = true;
+        } catch (e) { console.error("gallery migrate failed", e); remaining.push(imgs[i]); }
+      }
+      if (remaining.length) localStorage.setItem("jsr-imagery", JSON.stringify(remaining));
+      else localStorage.removeItem("jsr-imagery");
+    } catch (e) { console.error("gallery migrate failed", e); }
+  }
+  if (changed) { renderArticles(); renderImagery(); }
 }
 
 setOwner(isOwner());
@@ -1493,6 +1661,7 @@ if (sb) {
     currentSession = session || null;
     setOwner(isOwnerSession(currentSession));
     if (currentSession && !isOwnerSession(currentSession)) finishMemberLogin(currentSession);
+    if (isOwnerSession(currentSession)) migrateLocalOwnerData();
     try { paintWho(); } catch {}
   };
   sb.auth.getSession().then(({ data }) => applySession(data.session));
