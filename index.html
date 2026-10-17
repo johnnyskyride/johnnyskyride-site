@@ -269,6 +269,9 @@
   .modal input { background:#000; border:1px solid #2f3336; color:#e7e9ea; border-radius:8px; padding:10px; }
   .modal button { background:#ff6bb5; color:#111; border:0; border-radius:999px; padding:10px; font-weight:800; cursor:pointer; }
   .reply { margin-top:8px; }
+  .rabbit-send { background:transparent; border:0; cursor:pointer; font-size:20px; line-height:1; padding:4px 6px; border-radius:50%; vertical-align:middle; }
+  .rabbit-send:hover { background:rgba(249,24,128,.15); transform:translateY(-2px); }
+  .reply:has(.rabbit-send) { display:flex; gap:6px; align-items:center; }
   .reply input { width:100%; background:#000; border:1px solid #2f3336; color:#e7e9ea; border-radius:8px; padding:8px; font-size:14px; }
   .comment { margin-top:6px; padding:6px 0; border-top:1px solid #2f3336; font-size:14px; }
   .comment b { color:#e7e9ea; }
@@ -814,6 +817,7 @@ async function renderFeed(){
           ${cs.map(c => `<div class="comment"><b style="cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">${escapeHtml(c.n)}</b> <span style="color:#71767b;cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">@${escapeHtml(c.h)}</span><div>${linkMentions(c.t)}</div>${c.media ? (c.mediaType&&c.mediaType.startsWith("video") ? `<video src="${c.media}" controls playsinline style="max-width:100%;border-radius:12px;margin-top:6px"></video>` : `<img src="${c.media}" style="max-width:100%;border-radius:12px;margin-top:6px">`) : ""}</div>`).join("")}
           <textarea id="r-${id}" class="reply-box" maxlength="280" placeholder="Post your reply" rows="1" onkeydown="if(event.key==='Enter'&&event.ctrlKey){event.preventDefault();addReply('${id}')}"></textarea>
           <label style="cursor:pointer;color:#71767b;font-size:13px">＋<input type="file" accept="image/*,video/*,.gif" style="display:none" onchange="attachCommentMedia('${id}', this)"></label>
+          <button class="rabbit-send" title="Send" aria-label="Send comment" onclick="addReply('${id}')">🐇</button>
           <span id="rc-prev-${id}"></span>
         </div>
       </div>
@@ -1088,7 +1092,7 @@ function readArticle(i){
       <h1>${escapeHtml(a.title)}</h1>
       <div class="body">${a.body}</div>
       <div id="art-comments" style="margin-top:16px"></div>
-      <div class="reply"><input id="art-reply" placeholder="Comment on this article" onkeydown="if(event.key==='Enter')addArtComment(${i})"></div>
+      <div class="reply"><input id="art-reply" placeholder="Comment on this article" onkeydown="if(event.key==='Enter')addArtComment(${i})"><button class="rabbit-send" title="Send" aria-label="Send comment" onclick="addArtComment(${i})">🐇</button></div>
     </div>`;
   renderArtComments(i);
 }
