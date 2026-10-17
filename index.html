@@ -730,7 +730,7 @@ async function loadComments(){
   const grouped = {};
   (data || []).forEach(r => {
     (grouped[r.post_id] = grouped[r.post_id] || []).push({
-      n: r.name, h: r.handle, t: r.body, avatar: r.avatar, media: r.media, mediaType: r.media_type, reply: r.is_reply, bot: r.bot,
+      id: r.id, n: r.name, h: r.handle, t: r.body, avatar: r.avatar, media: r.media, mediaType: r.media_type, reply: r.is_reply, bot: r.bot,
       d: new Date(r.created_at).toLocaleString(), ts: new Date(r.created_at).getTime()
     });
   });
@@ -818,7 +818,7 @@ async function renderFeed(){
           <span style="color:#71767b">◉ ${p.views||0}</span>
         </div>
         <div class="reply">
-          ${cs.map(c => `<div class="comment"><b style="cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">${escapeHtml(c.n)}</b>${commentStar(c)} <span style="color:#71767b;cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">@${escapeHtml(c.h)}</span><div>${linkMentions(c.t)}</div>${c.media ? (c.mediaType&&c.mediaType.startsWith("video") ? `<video src="${c.media}" controls playsinline style="max-width:100%;border-radius:12px;margin-top:6px"></video>` : `<img src="${c.media}" style="max-width:100%;border-radius:12px;margin-top:6px">`) : ""}</div>`).join("")}
+          ${cs.map(c => `<div class="comment"><b style="cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">${escapeHtml(c.n)}</b>${commentStar(c)} <span style="color:#71767b;cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">@${escapeHtml(c.h)}</span>${canDeleteComment(c.h) && c.id ? ` <button data-cid="${escapeHtml(c.id)}" onclick="deleteComment(this.dataset.cid)" title="Delete comment" aria-label="Delete comment" style="background:none;border:0;color:#71767b;cursor:pointer;float:right">✕</button>` : ""}<div>${linkMentions(c.t)}</div>${c.media ? (c.mediaType&&c.mediaType.startsWith("video") ? `<video src="${c.media}" controls playsinline style="max-width:100%;border-radius:12px;margin-top:6px"></video>` : `<img src="${c.media}" style="max-width:100%;border-radius:12px;margin-top:6px">`) : ""}</div>`).join("")}
           <div class="reply-row">
           <textarea id="r-${id}" class="reply-box" maxlength="280" placeholder="Post your reply" rows="1" onkeydown="if(event.key==='Enter'&&event.ctrlKey){event.preventDefault();addReply('${id}')}"></textarea>
           <label style="cursor:pointer;color:#71767b;font-size:13px">＋<input type="file" accept="image/*,video/*,.gif" style="display:none" onchange="attachCommentMedia('${id}', this)"></label>
@@ -878,6 +878,21 @@ function sharePost(id){
   } else {
     navigator.clipboard.writeText(url).then(() => alert("Link copied")).catch(() => prompt("Copy this link:", url));
   }
+}
+// Owner, or the comment's author (same rule as the comments/article_comments delete policies)
+function canDeleteComment(handle){
+  if (!sb || !currentSession) return false;
+  if (isOwnerSession(currentSession)) return true;
+  const me = currentUser();
+  return !!(me && me.handle && handle && String(me.handle).toLowerCase() === String(handle).toLowerCase());
+}
+async function deleteComment(id){
+  if (!id || !sb || !currentSession) return;
+  if (!confirm("Delete this comment?")) return;
+  const { data, error } = await sb.from("comments").delete().eq("id", id).select("id");
+  if (error) { alert("Could not delete: " + error.message); return; }
+  if (!data || !data.length) { alert("Could not delete this comment."); return; }
+  renderFeed();
 }
 function focusReply(id){ const el=document.getElementById("r-"+id); if(el) el.focus(); }
 const BOTS = ["sukozu","letty the lead","6-string","4-funk","drummond"];
@@ -1186,12 +1201,10 @@ async function renderArtComments(aid){
   if (!box || !sb) return;
   const { data, error } = await sb.from("article_comments").select("id,article_id,name,handle,avatar,body,bot,created_at").eq("article_id", aid).order("created_at", { ascending: true });
   if (error) { console.error(error); return; }
-  const me = currentUser();
-  const myH = me ? String(me.handle||"").toLowerCase() : "";
   box.innerHTML = (data||[]).map(r => {
     const c = { n: r.name || r.handle, h: r.handle, bot: r.bot };
-    const canDel = ownerNow() || (myH && myH === String(r.handle||"").toLowerCase());
-    return `<div class="comment"><b style="cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">${escapeHtml(c.n)}</b>${commentStar(c)} <span style="color:#71767b;cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">@${escapeHtml(c.h)}</span>${canDel ? ` <button onclick="deleteArtComment('${r.id}','${aid}')" title="Delete comment" aria-label="Delete comment" style="background:none;border:0;color:#71767b;cursor:pointer;float:right">✕</button>` : ""}<div>${linkMentions(r.body)}</div></div>`;
+    const canDel = canDeleteComment(r.handle);
+    return `<div class="comment"><b style="cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">${escapeHtml(c.n)}</b>${commentStar(c)} <span style="color:#71767b;cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">@${escapeHtml(c.h)}</span>${canDel ? ` <button data-cid="${escapeHtml(r.id)}" data-aid="${escapeHtml(aid)}" onclick="deleteArtComment(this.dataset.cid, this.dataset.aid)" title="Delete comment" aria-label="Delete comment" style="background:none;border:0;color:#71767b;cursor:pointer;float:right">✕</button>` : ""}<div>${linkMentions(r.body)}</div></div>`;
   }).join("");
 }
 async function addArtComment(aid){
@@ -1210,8 +1223,9 @@ async function addArtComment(aid){
 }
 async function deleteArtComment(id, aid){
   if(!confirm("Delete this comment?")) return;
-  const { error } = await sb.from("article_comments").delete().eq("id", id);
+  const { data, error } = await sb.from("article_comments").delete().eq("id", id).select("id");
   if (error) { alert("Could not delete: " + error.message); return; }
+  if (!data || !data.length) { alert("Could not delete this comment."); return; }
   renderArtComments(aid);
 }
 
@@ -1657,11 +1671,14 @@ window.addEventListener("load", () => renderFeed());
 setTimeout(() => renderFeed(), 600);
 
 if (sb) {
+  let lastFeedWho = "";
   const applySession = (session) => {
     currentSession = session || null;
     setOwner(isOwnerSession(currentSession));
     if (currentSession && !isOwnerSession(currentSession)) finishMemberLogin(currentSession);
     if (isOwnerSession(currentSession)) migrateLocalOwnerData();
+    const who = currentSession ? (currentSession.user && currentSession.user.email || "") : "";
+    if (who !== lastFeedWho) { lastFeedWho = who; try { renderFeed(); } catch {} }
     try { paintWho(); } catch {}
   };
   sb.auth.getSession().then(({ data }) => applySession(data.session));
