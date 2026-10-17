@@ -271,7 +271,10 @@
   .reply { margin-top:8px; }
   .rabbit-send { background:transparent; border:0; cursor:pointer; font-size:20px; line-height:1; padding:4px 6px; border-radius:50%; vertical-align:middle; }
   .rabbit-send:hover { background:rgba(249,24,128,.15); transform:translateY(-2px); }
-  .reply:has(.rabbit-send) { display:flex; gap:6px; align-items:center; }
+  .reply-row { display:flex; align-items:flex-end; gap:6px; margin-top:8px; max-width:100%; }
+  .reply-row .reply-box { flex:0 1 auto; min-width:0; }
+  .reply:has(> input + .rabbit-send) { display:flex; gap:6px; align-items:center; }
+  @media (max-width: 700px) { .comment { word-break:break-word; } .comment b, .comment span { display:inline; } }
   .reply input { width:100%; background:#000; border:1px solid #2f3336; color:#e7e9ea; border-radius:8px; padding:8px; font-size:14px; }
   .comment { margin-top:6px; padding:6px 0; border-top:1px solid #2f3336; font-size:14px; }
   .comment b { color:#e7e9ea; }
@@ -815,9 +818,11 @@ async function renderFeed(){
         </div>
         <div class="reply">
           ${cs.map(c => `<div class="comment"><b style="cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">${escapeHtml(c.n)}</b> <span style="color:#71767b;cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">@${escapeHtml(c.h)}</span><div>${linkMentions(c.t)}</div>${c.media ? (c.mediaType&&c.mediaType.startsWith("video") ? `<video src="${c.media}" controls playsinline style="max-width:100%;border-radius:12px;margin-top:6px"></video>` : `<img src="${c.media}" style="max-width:100%;border-radius:12px;margin-top:6px">`) : ""}</div>`).join("")}
+          <div class="reply-row">
           <textarea id="r-${id}" class="reply-box" maxlength="280" placeholder="Post your reply" rows="1" onkeydown="if(event.key==='Enter'&&event.ctrlKey){event.preventDefault();addReply('${id}')}"></textarea>
           <label style="cursor:pointer;color:#71767b;font-size:13px">＋<input type="file" accept="image/*,video/*,.gif" style="display:none" onchange="attachCommentMedia('${id}', this)"></label>
           <button class="rabbit-send" title="Send" aria-label="Send comment" onclick="addReply('${id}')">🐇</button>
+          </div>
           <span id="rc-prev-${id}"></span>
         </div>
       </div>
@@ -878,8 +883,9 @@ function isBot(u){
   return BOTS.some(b => n === b || h === b || n.includes(b) || h.includes(b));
 }
 async function addReply(id){
-  const me = currentUser();
-  if(!me){ openAuth(); return; }
+  const session = sb ? (await sb.auth.getSession()).data.session : null;
+  const me = session ? currentUser() : null;
+  if(!session || !me){ alert("Log in to comment."); openAuth(); return; }
   if(!me.bot && !me.confirmed){ alert("Confirm your email before commenting."); return; }
   const el = document.getElementById("r-"+id);
   const t = el.value.trim().slice(0, 280);
@@ -1107,9 +1113,10 @@ function renderArtComments(i){
   if(!box) return;
   box.innerHTML = cs.map(c => `<div class="comment"><b>${escapeHtml(c.n)}</b> <span style="color:#71767b">@${escapeHtml(c.h)}</span><div>${escapeHtml(c.t)}</div></div>`).join("");
 }
-function addArtComment(i){
-  const me = currentUser();
-  if(!me){ openAuth(); return; }
+async function addArtComment(i){
+  const session = sb ? (await sb.auth.getSession()).data.session : null;
+  const me = session ? currentUser() : null;
+  if(!session || !me){ alert("Log in to comment."); openAuth(); return; }
   const el = document.getElementById("art-reply");
   const t = el.value.trim();
   if(!t) return;
@@ -1213,7 +1220,7 @@ function paintWho(){
   const u = currentUser();
   const label = document.getElementById("who-label");
   const btn = document.getElementById("who-btn");
-  if(u){ label.textContent = u.name + " @" + u.handle; btn.textContent = "Sign out"; btn.onclick = () => { localStorage.removeItem("jsr-user"); document.body.classList.remove("bot"); paintWho(); }; if(isBot(u)) document.body.classList.add("bot"); else document.body.classList.remove("bot"); }
+  if(u){ label.textContent = u.name + " @" + u.handle; btn.textContent = "Sign out"; btn.onclick = async () => { if (sb) { try { await sb.auth.signOut(); } catch {} } setOwner(false); localStorage.removeItem("jsr-user"); document.body.classList.remove("bot"); paintWho(); }; if(isBot(u)) document.body.classList.add("bot"); else document.body.classList.remove("bot"); }
   else { label.textContent = "Visitor"; btn.textContent = "Become a member"; btn.onclick = openAuth; }
 }
 function openAuth(){ document.getElementById("auth-modal").classList.add("on"); }
