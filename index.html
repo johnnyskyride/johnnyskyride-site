@@ -860,9 +860,13 @@ async function toggleLike(id){
   likes[id] = !likes[id];
   saveLikes(likes);
   if (sb) {
-    const { data } = await sb.from("posts").select("likes").eq("id", id).maybeSingle();
-    const next = Math.max(0, ((data && data.likes) || 0) + delta);
-    await sb.from("posts").update({ likes: next }).eq("id", id);
+    const { error: rpcErr } = await sb.rpc("bump_likes", { pid: id, delta });
+    if (rpcErr) {
+      // Fallback until bump_likes exists on the server.
+      const { data } = await sb.from("posts").select("likes").eq("id", id).maybeSingle();
+      const next = Math.max(0, ((data && data.likes) || 0) + delta);
+      await sb.from("posts").update({ likes: next }).eq("id", id);
+    }
   }
   renderFeed();
 }
@@ -1568,9 +1572,13 @@ async function bumpViews(ids){
   for (const id of ids){
     if (seenViews.has(id)) continue;
     seenViews.add(id);
-    const { data } = await sb.from("posts").select("views").eq("id", id).maybeSingle();
-    const next = ((data && data.views) || 0) + 1;
-    await sb.from("posts").update({ views: next }).eq("id", id);
+    const { error: rpcErr } = await sb.rpc("bump_views", { pid: id });
+    if (rpcErr) {
+      // Fallback until bump_views exists on the server.
+      const { data } = await sb.from("posts").select("views").eq("id", id).maybeSingle();
+      const next = ((data && data.views) || 0) + 1;
+      await sb.from("posts").update({ views: next }).eq("id", id);
+    }
   }
   sessionStorage.setItem("jsr-seen", JSON.stringify([...seenViews]));
 }
