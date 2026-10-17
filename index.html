@@ -661,16 +661,16 @@ no one × nothing × nuh uh</div>
 <div class="modal" id="auth-modal">
   <div class="box">
     <h3 style="margin:0">Become a member</h3>
-    <p style="color:#71767b;font-size:13px;margin:4px 0 10px">Members can comment on posts and articles. Add a pic and a short bio.</p>
-    <input id="auth-name" placeholder="Display name">
-    <input id="auth-handle" placeholder="Handle (no @)">
-    <input id="auth-email" type="email" placeholder="Email">
+    <p style="color:#71767b;font-size:13px;margin:4px 0 10px">Members can comment on posts and articles. Enter your email and we'll send a sign-in link. Returning members only need their email; new members add a name and handle too.</p>
+    <input id="auth-email" type="email" placeholder="Email" onkeydown="if(event.key==='Enter')doSignIn()">
+    <input id="auth-name" placeholder="Display name (new members)">
+    <input id="auth-handle" placeholder="Handle, no @ (new members)">
     <textarea id="auth-bio" placeholder="Short bio (optional)" style="width:100%;min-height:60px;background:#000;color:#e7e9ea;border:1px solid #2f3336;border-radius:8px;padding:8px;margin:6px 0;font-family:inherit"></textarea>
     <label style="display:block;margin:6px 0;color:#71767b;font-size:13px">Profile pic
       <input id="auth-pic" type="file" accept="image/*" style="display:block;margin-top:4px">
     </label>
     <img id="auth-pic-preview" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;display:none;margin:6px 0">
-    <button onclick="doSignIn()">Join / Sign in</button>
+    <button onclick="doSignIn()">Email me a sign-in link</button>
     <button onclick="closeAuth()" style="background:#000;color:#e7e9ea;border:1px solid #2f3336">Cancel</button>
     
   </div>
@@ -817,7 +817,7 @@ async function renderFeed(){
           <span style="color:#71767b">◉ ${p.views||0}</span>
         </div>
         <div class="reply">
-          ${cs.map(c => `<div class="comment"><b style="cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">${escapeHtml(c.n)}</b> <span style="color:#71767b;cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">@${escapeHtml(c.h)}</span><div>${linkMentions(c.t)}</div>${c.media ? (c.mediaType&&c.mediaType.startsWith("video") ? `<video src="${c.media}" controls playsinline style="max-width:100%;border-radius:12px;margin-top:6px"></video>` : `<img src="${c.media}" style="max-width:100%;border-radius:12px;margin-top:6px">`) : ""}</div>`).join("")}
+          ${cs.map(c => `<div class="comment"><b style="cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">${escapeHtml(c.n)}</b>${commentStar(c)} <span style="color:#71767b;cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">@${escapeHtml(c.h)}</span><div>${linkMentions(c.t)}</div>${c.media ? (c.mediaType&&c.mediaType.startsWith("video") ? `<video src="${c.media}" controls playsinline style="max-width:100%;border-radius:12px;margin-top:6px"></video>` : `<img src="${c.media}" style="max-width:100%;border-radius:12px;margin-top:6px">`) : ""}</div>`).join("")}
           <div class="reply-row">
           <textarea id="r-${id}" class="reply-box" maxlength="280" placeholder="Post your reply" rows="1" onkeydown="if(event.key==='Enter'&&event.ctrlKey){event.preventDefault();addReply('${id}')}"></textarea>
           <label style="cursor:pointer;color:#71767b;font-size:13px">＋<input type="file" accept="image/*,video/*,.gif" style="display:none" onchange="attachCommentMedia('${id}', this)"></label>
@@ -876,6 +876,12 @@ function sharePost(id){
 }
 function focusReply(id){ const el=document.getElementById("r-"+id); if(el) el.focus(); }
 const BOTS = ["sukozu","letty the lead","6-string","4-funk","drummond"];
+function commentStar(c){
+  const h = (c.h||c.handle||"").toLowerCase();
+  if (c.owner || h === "johnnyskyride") return '<svg class="star" viewBox="0 0 24 24" width="16" height="16" aria-label="Verified"><path fill="#f5c518" d="M12 2l2.9 6.9 7.4.6-5.6 4.8 1.7 7.2L12 17.8 5.6 21.5l1.7-7.2L1.7 9.5l7.4-.6z"/></svg>';
+  if (c.bot || isBot({name: c.n||c.name, handle: c.h||c.handle})) return '<svg class="star" viewBox="0 0 24 24" width="16" height="16"><path fill="#c0c0c0" d="M12 2l2.9 6.9 7.4.6-5.6 4.8 1.7 7.2L12 17.8 5.6 21.5l1.7-7.2L1.7 9.5l7.4-.6z"/></svg>';
+  return "";
+}
 function isBot(u){
   if(!u) return false;
   const n = (u.name||"").toLowerCase().trim();
@@ -1111,7 +1117,7 @@ function renderArtComments(i){
   const cs = all[i] || [];
   const box = document.getElementById("art-comments");
   if(!box) return;
-  box.innerHTML = cs.map(c => `<div class="comment"><b>${escapeHtml(c.n)}</b> <span style="color:#71767b">@${escapeHtml(c.h)}</span><div>${escapeHtml(c.t)}</div></div>`).join("");
+  box.innerHTML = cs.map(c => `<div class="comment"><b>${escapeHtml(c.n)}</b>${commentStar(c)} <span style="color:#71767b">@${escapeHtml(c.h)}</span><div>${escapeHtml(c.t)}</div></div>`).join("");
 }
 async function addArtComment(i){
   const session = sb ? (await sb.auth.getSession()).data.session : null;
@@ -1121,7 +1127,7 @@ async function addArtComment(i){
   const t = el.value.trim();
   if(!t) return;
   const all = loadArtComments();
-  (all[i] = all[i] || []).push({n:me.name, h:me.handle, t});
+  (all[i] = all[i] || []).push({n:me.name, h:me.handle, t, owner: !!me.owner, bot: !!me.bot || isBot(me)});
   localStorage.setItem("jsr-art-comments", JSON.stringify(all));
   renderArtComments(i);
   el.value = "";
@@ -1145,6 +1151,12 @@ async function deletePost(id){
   }
   renderFeed();
 }
+const OWNER_EMAIL = "johnnyskyride@outlook.com";
+let currentSession = null;
+function isOwnerSession(session){
+  const e = session && session.user && session.user.email;
+  return !!e && e.toLowerCase() === OWNER_EMAIL.toLowerCase();
+}
 function setOwner(on){
   document.body.classList.toggle("owner", on);
 }
@@ -1159,16 +1171,16 @@ async function ownerLogin(){
   if(!sb) return alert("Auth not loaded. Refresh and try again.");
   const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
   if(error){ alert(error.message); return; }
+  if(!isOwnerSession(data && data.session)){
+    try { await sb.auth.signOut(); } catch {}
+    currentSession = null; setOwner(false); paintWho();
+    alert("Not the owner account.");
+    return;
+  }
+  currentSession = data.session;
   setOwner(true);
+  paintWho();
   document.getElementById("owner-login").classList.remove("on");
-}
-async function ownerSignUp(){
-  const email = document.getElementById("owner-email").value.trim();
-  const pass = document.getElementById("owner-pass").value;
-  if(!email || !pass) return alert("Email and password required.");
-  const { error } = await sb.auth.signUp({ email, password: pass });
-  if(error){ alert(error.message); return; }
-  alert("Check your email to confirm, then sign in.");
 }
 function closeOwnerLogin(){ document.getElementById("owner-login").classList.remove("on"); }
 
@@ -1209,18 +1221,20 @@ setOwner(isOwner());
 renderImagery();
 function lockOwner(){ setOwner(false); }
 function currentUser(){
+  if (!currentSession) return null;
+  if (isOwnerSession(currentSession)) return { name: "×ＭΛＮ×ｂΞｉｎｇ×", handle: "johnnyskyride", email: OWNER_EMAIL, confirmed: true, owner: true };
   try {
     const u = JSON.parse(localStorage.getItem("jsr-user") || "null");
-    if (u) return u;
+    const em = (currentSession.user.email||"").toLowerCase();
+    if (u && (!u.email || u.email.toLowerCase() === em)) return u;
   } catch {}
-  if (isOwner()) return { name: "×ＭΛＮ×ｂΞｉｎｇ×", handle: "johnnyskyride", confirmed: true, owner: true };
   return null;
 }
 function paintWho(){
   const u = currentUser();
   const label = document.getElementById("who-label");
   const btn = document.getElementById("who-btn");
-  if(u){ label.textContent = u.name + " @" + u.handle; btn.textContent = "Sign out"; btn.onclick = async () => { if (sb) { try { await sb.auth.signOut(); } catch {} } setOwner(false); localStorage.removeItem("jsr-user"); document.body.classList.remove("bot"); paintWho(); }; if(isBot(u)) document.body.classList.add("bot"); else document.body.classList.remove("bot"); }
+  if(u){ label.textContent = u.name + " @" + u.handle; btn.textContent = "Sign out"; btn.onclick = async () => { if (sb) { try { await sb.auth.signOut(); } catch {} } currentSession = null; setOwner(false); localStorage.removeItem("jsr-user"); document.body.classList.remove("bot"); paintWho(); }; if(isBot(u)) document.body.classList.add("bot"); else document.body.classList.remove("bot"); }
   else { label.textContent = "Visitor"; btn.textContent = "Become a member"; btn.onclick = openAuth; }
 }
 function openAuth(){ document.getElementById("auth-modal").classList.add("on"); }
@@ -1243,40 +1257,70 @@ document.addEventListener("change", (e) => {
 async function doSignIn(){
   const name = document.getElementById("auth-name").value.trim();
   const handle = document.getElementById("auth-handle").value.trim().replace(/^@/,"");
-  const email = (document.getElementById("auth-email")||{}).value ? document.getElementById("auth-email").value.trim() : "";
-  const bio = (document.getElementById("auth-bio")||{}).value ? document.getElementById("auth-bio").value.trim() : "";
-  const bot = isBot({name, handle}) || isBot({name: name.toLowerCase(), handle: handle.toLowerCase()});
-  if(!name || !handle) return alert("Name and handle required.");
-  if(!bot && !email) return alert("Email required.");
-  const user = {name, handle, email, bio, avatar: pendingAuthPic || ""};
-  if (bot) user.bot = true;
-  else {
-    const pass = "jsr-" + Math.random().toString(36).slice(2,10);
-    const { error } = await sb.auth.signUp({ email, password: pass });
-    if (error) { alert(error.message); return; }
-    user.confirmed = false;
-    alert("Check your email to confirm, then you can comment.");
+  const email = (document.getElementById("auth-email").value || "").trim().toLowerCase();
+  const bio = (document.getElementById("auth-bio").value || "").trim();
+  if(!email) return alert("Email required.");
+  if(!sb) return alert("Auth not loaded. Refresh and try again.");
+  if((name && !handle) || (!name && handle)) return alert("New members need both a name and a handle.");
+  if(name && handle){
+    localStorage.setItem("jsr-pending-profile", JSON.stringify({ name, handle, email, bio, avatar: pendingAuthPic || "" }));
+  } else {
+    localStorage.removeItem("jsr-pending-profile");
   }
+  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: true } });
+  if (error) { alert(error.message); return; }
+  pendingAuthPic = "";
+  closeAuth();
+  alert("Check " + email + " for your sign-in link. Open it on this device to finish.");
+}
+// After a member session exists: apply pending profile or look up existing one, upsert members row.
+async function finishMemberLogin(session){
+  if (!session || !sb || isOwnerSession(session)) return;
+  const email = (session.user.email || "").toLowerCase();
+  let pending = null, saved = null;
+  try { pending = JSON.parse(localStorage.getItem("jsr-pending-profile") || "null"); } catch {}
+  try { saved = JSON.parse(localStorage.getItem("jsr-user") || "null"); } catch {}
+  if (pending && pending.email && pending.email.toLowerCase() !== email) pending = null;
+  let user = null;
+  if (pending) user = { name: pending.name, handle: pending.handle, email, bio: pending.bio || "", avatar: pending.avatar || "" };
+  else {
+    let row = null;
+    const r1 = await sb.from("members").select("*").eq("email", email).maybeSingle();
+    if (!r1.error) row = r1.data;
+    if (!row && saved && saved.handle) {
+      const r2 = await sb.from("members").select("*").eq("handle", saved.handle).maybeSingle();
+      if (r2.data && (!r2.data.email || r2.data.email.toLowerCase() === email)) row = r2.data;
+    }
+    if (row) user = { name: row.name, handle: row.handle, email, bio: row.bio || "", avatar: row.avatar || "" };
+  }
+  if (!user) {
+    paintWho();
+    alert("Signed in. Finish your profile: enter your email, display name and handle.");
+    openAuth();
+    return;
+  }
+  user.bot = isBot({name: user.name, handle: user.handle});
+  user.confirmed = true;
   localStorage.setItem("jsr-user", JSON.stringify(user));
   const members = JSON.parse(localStorage.getItem("jsr-members")||"[]");
-  const existing = members.findIndex(m => m.handle === handle);
+  const existing = members.findIndex(m => m.handle === user.handle);
   if (existing >= 0) members[existing] = Object.assign({}, members[existing], user);
   else members.push(user);
   localStorage.setItem("jsr-members", JSON.stringify(members));
-  if (!sb) { alert("Shared list unavailable. Refresh and try again."); return; }
-  const { error: upErr } = await sb.from("members").upsert({
-    handle: user.handle,
-    name: user.name,
-    email: user.email || null,
-    bio: user.bio || null,
-    avatar: user.avatar || null,
-    bot: !!user.bot
-  });
-  if (upErr) { alert("Could not save to shared list: " + upErr.message); return; }
-  pendingAuthPic = "";
-  closeAuth();
+  if (pending) {
+    const { error: upErr } = await sb.from("members").upsert({
+      handle: user.handle,
+      name: user.name,
+      email: user.email || null,
+      bio: user.bio || null,
+      avatar: user.avatar || null,
+      bot: !!user.bot
+    });
+    if (upErr) alert("Could not save to shared list: " + upErr.message);
+    localStorage.removeItem("jsr-pending-profile");
+  }
   paintWho();
-  updateMemberCounts();
+  try { updateMemberCounts(); } catch {}
 }
 async function openMember(handle){
   let members = JSON.parse(localStorage.getItem("jsr-members")||"[]");
@@ -1388,12 +1432,14 @@ window.addEventListener("load", () => renderFeed());
 setTimeout(() => renderFeed(), 600);
 
 if (sb) {
-  sb.auth.getSession().then(({ data }) => {
-    if (data.session) setOwner(true);
-  });
-  sb.auth.onAuthStateChange((event, session) => {
-    setOwner(!!session);
-  });
+  const applySession = (session) => {
+    currentSession = session || null;
+    setOwner(isOwnerSession(currentSession));
+    if (currentSession && !isOwnerSession(currentSession)) finishMemberLogin(currentSession);
+    try { paintWho(); } catch {}
+  };
+  sb.auth.getSession().then(({ data }) => applySession(data.session));
+  sb.auth.onAuthStateChange((event, session) => { setTimeout(() => applySession(session), 0); });
 }
 
 function openRepost(id){
