@@ -1558,37 +1558,9 @@ function linkMentions(text){
   return escapeHtml(text).replace(/@([A-Za-z0-9_\-]+)/g, '<span class="mention" onclick="openMember(\'$1\')">@$1</span>');
 }
 async function notifyMentions(text, authorHandle, authorIsBot){
-  if (!sb) return;
-  const handles = findMentions(text);
-  if (!handles.length) return;
-  const { data: members } = await sb.from("members").select("handle,name,email,bot");
-  const byHandle = {};
-  (members||[]).forEach(m => byHandle[(m.handle||"").toLowerCase()] = m);
-  for (const h of handles){
-    const target = byHandle[h.toLowerCase()];
-    if (!target) continue;
-    const targetIsBot = !!target.bot || isBot({name: target.name, handle: target.handle});
-    const targetIsJohnny = (target.handle||"").toLowerCase() === "johnnyskyride";
-    const authorIsJohnny = (authorHandle||"").toLowerCase() === "johnnyskyride";
-    let to = null;
-    if (targetIsBot && !authorIsBot && !authorIsJohnny) to = BOT_ALERT;
-    else if (targetIsJohnny && authorIsBot) to = target.email || null;
-    else if (!targetIsBot && !targetIsJohnny && (authorIsJohnny || authorIsBot)) to = target.email || null;
-    if (!to) continue;
-    await sb.from("notifications").insert({
-      to_email: to,
-      handle: target.handle,
-      mentioned_by: authorHandle,
-      body: text.slice(0, 280)
-    });
-    try {
-      await fetch(SB_URL + "/functions/v1/notify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "apikey": SB_KEY },
-        body: JSON.stringify({ to, handle: target.handle, by: authorHandle, text: text.slice(0, 280) })
-      });
-    } catch(e){}
-  }
+  // Notifications (mentions + comments on Bot posts) are now sent server-side
+  // by a database trigger on posts/comments. Nothing to do in the browser.
+  return;
 }
 
 async function bumpViews(ids){
