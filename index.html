@@ -202,6 +202,7 @@
   .media-preview { margin: 8px 16px; max-width: 280px; }
   .media-preview img, .media-preview video { width: 100%; border-radius: 12px; border: 1px solid var(--border); }
   .liked { color: #f91880 !important; }
+  .heart i, .c-heart i { font-style: normal; }
 
   .star { display:inline-block; vertical-align:-2px; margin-left:4px; }
   .post-menu { position: relative; margin-left: auto; flex: none; }
@@ -774,8 +775,18 @@ async function loadComments(){
   return grouped;
 }
 async function saveComments(){ /* comments saved individually */ }
-function loadLikes(){ try { return JSON.parse(localStorage.getItem("jsr-likes")||"{}"); } catch { return {}; } }
-function saveLikes(o){ localStorage.setItem("jsr-likes", JSON.stringify(o)); }
+// Post hearts: one per signed-in user (post_likes table); posts.likes is kept by a DB trigger.
+let MY_PLIKES = new Set(), myPlikesFor = null;
+try { localStorage.removeItem("jsr-likes"); } catch {}
+async function loadMyPostLikes(){
+  const email = (typeof currentSession !== "undefined" && currentSession && currentSession.user && currentSession.user.email) || "";
+  if (!sb || !email) { MY_PLIKES = new Set(); myPlikesFor = null; return; }
+  if (myPlikesFor === email) return;
+  const { data, error } = await sb.from("post_likes").select("post_id");
+  if (error) { console.error(error); return; }
+  MY_PLIKES = new Set((data||[]).map(r => r.post_id));
+  myPlikesFor = email;
+}
 let currentTab = "posts";
 let feedRenderSeq = 0;
 document.querySelectorAll(".tabs button").forEach(btn => {
@@ -815,15 +826,15 @@ async function renderFeed(){
     return;
   }
   const comments = await loadComments();
-  await loadMyCommentLikes();
+  await Promise.all([loadMyCommentLikes(), loadMyPostLikes()]);
   if (seq !== feedRenderSeq) return;
-  const likes = loadLikes();
   const start = feedPage * PAGE_SIZE; const page = all.slice(start, start + PAGE_SIZE);
   document.getElementById("feed").innerHTML = page.map((p,i) => {
     const id = p.id || ("s"+i);
     if (p.t && p.t.length > 280) fullPosts[id] = p.t;
     const cs = comments[id] || [];
-    const liked = likes[id] ? " liked" : "";
+    const isLiked = MY_PLIKES.has(id);
+    const liked = isLiked ? " liked" : "";
     const lc = p.likes || 0;
     let media = "";
     if (p.media && p.media.startsWith("http")) {
@@ -847,7 +858,7 @@ async function renderFeed(){
         <div class="actions">
           <span onclick="focusReply('${id}')">💬 ${cs.length}</span>
           <span class="starred-only" onclick="openRepost('${id}')">↻</span>
-          <span class="heart${liked}" onclick="toggleLike('${id}')">♡ ${lc||""}</span>
+          <span class="heart${liked}" data-pid="${escapeHtml(id)}" onclick="toggleLike(this.dataset.pid)" title="Heart" aria-label="Heart">${isLiked ? "♥" : "♡"} <i>${lc||""}</i></span>
           <span onclick="sharePost('${id}')">↗</span>
           <span style="color:#71767b">◉ ${p.views||0}</span>
         </div>
@@ -890,21 +901,34 @@ function previewMedia(input){
   };
   r.readAsDataURL(f);
 }
+let postLikeBusy = new Set();
 async function toggleLike(id){
-  const likes = loadLikes();
-  const delta = likes[id] ? -1 : 1;
-  likes[id] = !likes[id];
-  saveLikes(likes);
-  if (sb) {
-    const { error: rpcErr } = await sb.rpc("bump_likes", { pid: id, delta });
-    if (rpcErr) {
-      // Fallback until bump_likes exists on the server.
-      const { data } = await sb.from("posts").select("likes").eq("id", id).maybeSingle();
-      const next = Math.max(0, ((data && data.likes) || 0) + delta);
-      await sb.from("posts").update({ likes: next }).eq("id", id);
+  const session = sb ? (await sb.auth.getSession()).data.session : null;
+  if (!session) { alert("Log in to heart posts."); openAuth(); return; }
+  if (postLikeBusy.has(id)) return;
+  postLikeBusy.add(id);
+  try {
+    await loadMyPostLikes();
+    const el0 = document.querySelector(`.heart[data-pid="${CSS.escape(id)}"]`);
+    let count = parseInt((el0 && el0.textContent.replace(/\D/g, "")) || "0", 10);
+    if (MY_PLIKES.has(id)) {
+      const { error } = await sb.from("post_likes").delete().eq("post_id", id);
+      if (error) { alert("Could not remove heart: " + error.message); return; }
+      MY_PLIKES.delete(id); count = Math.max(0, count - 1);
+    } else {
+      const { error } = await sb.from("post_likes").insert({ post_id: id });
+      if (error && error.code !== "23505") { alert("Could not heart: " + error.message); return; }
+      MY_PLIKES.add(id); if (!error) count += 1;
     }
-  }
-  renderFeed();
+    // Pick up the trigger-maintained count from the server.
+    const { data } = await sb.from("posts").select("likes").eq("id", id).maybeSingle();
+    if (data && typeof data.likes === "number") count = data.likes;
+    const on = MY_PLIKES.has(id);
+    document.querySelectorAll(`.heart[data-pid="${CSS.escape(id)}"]`).forEach(el => {
+      el.classList.toggle("liked", on);
+      el.innerHTML = (on ? "♥" : "♡") + " <i>" + (count || "") + "</i>";
+    });
+  } finally { postLikeBusy.delete(id); }
 }
 function sharePost(id){
   const url = location.origin + location.pathname + "#post-" + id;
