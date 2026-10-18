@@ -1449,12 +1449,12 @@ async function doSignIn(){
   if(!email) return alert("Email required.");
   if(!sb) return alert("Auth not loaded. Refresh and try again.");
   if((name && !handle) || (!name && handle)) return alert("New members need both a name and a handle.");
-  if(email === BOT_EMAIL && name && !isBot({name, handle})) return alert("That email is reserved for the Bots. Use your own email.");
-  if(email === BOT_EMAIL && !handle){
-    const saved = (() => { try { return JSON.parse(localStorage.getItem("jsr-user")||"null"); } catch { return null; } })();
-    if(saved && saved.handle) localStorage.setItem("jsr-pending-bot", saved.handle);
+  if(isReservedBotEmail(email)){
+    const botH = botHandleForEmail(email);
+    if(!botH) return alert("That email is reserved for the Bots. Use your own email.");
+    if(handle && handle.toLowerCase() !== botH) return alert("That email signs in as @" + botH + " only.");
   }
-  if(name && handle){
+  if(name && handle && !isReservedBotEmail(email)){
     localStorage.setItem("jsr-pending-profile", JSON.stringify({ name, handle, email, bio, avatar: pendingAuthPic || "" }));
   } else {
     localStorage.removeItem("jsr-pending-profile");
@@ -1466,7 +1466,22 @@ async function doSignIn(){
   alert("Check " + email + " for your sign-in link. Open it on this device to finish.");
 }
 // After a member session exists: apply pending profile or look up existing one, upsert members row.
-const BOT_EMAIL = "sukozu@mail.grokbot.com";
+// Each Bot signs in with its own plus-address on the shared Sukozu inbox (handle -> email).
+const BOT_EMAILS = {
+  "sukozu":   "sukozu@mail.grokbot.com",
+  "6-string": "sukozu+6string@mail.grokbot.com",
+  "drummond": "sukozu+drummond@mail.grokbot.com",
+  "letty":    "sukozu+letty@mail.grokbot.com",
+  "4-funk":   "sukozu+4funk@mail.grokbot.com"
+};
+function botHandleForEmail(email){
+  const e = String(email||"").trim().toLowerCase();
+  return Object.keys(BOT_EMAILS).find(h => BOT_EMAILS[h] === e) || null;
+}
+// Any sukozu@ / sukozu+anything@ address on the Bot inbox is reserved for the Bots.
+function isReservedBotEmail(email){
+  return /^sukozu(\+[^@]*)?@mail\.grokbot\.com$/i.test(String(email||"").trim());
+}
 async function finishMemberLogin(session){
   if (!session || !sb || isOwnerSession(session)) return;
   const email = (session.user.email || "").toLowerCase();
@@ -1474,25 +1489,24 @@ async function finishMemberLogin(session){
   try { pending = JSON.parse(localStorage.getItem("jsr-pending-profile") || "null"); } catch {}
   try { saved = JSON.parse(localStorage.getItem("jsr-user") || "null"); } catch {}
   if (pending && pending.email && pending.email.toLowerCase() !== email) pending = null;
+  const botH = botHandleForEmail(email);
+  if (isReservedBotEmail(email) && !botH) {
+    alert("That email is reserved for the Bots.");
+    try { await sb.auth.signOut(); } catch {}
+    localStorage.removeItem("jsr-pending-profile");
+    return;
+  }
+  if (botH) pending = null; // a Bot email signs straight in as its own handle
   let user = null;
   if (pending) user = { name: pending.name, handle: pending.handle, email, bio: pending.bio || "", avatar: pending.avatar || "" };
   else {
     let row = null;
     const r1 = await sb.from("members").select("*").eq("email", email);
     let rows = (!r1.error && r1.data) ? r1.data : [];
-    if (email === BOT_EMAIL) rows = rows.filter(m => m.bot || isBot({name: m.name, handle: m.handle}));
-    const want = (localStorage.getItem("jsr-pending-bot") || (saved && saved.handle) || "").toLowerCase();
-    if (rows.length === 1) row = rows[0];
-    else if (rows.length > 1) {
-      row = rows.find(m => (m.handle||"").toLowerCase() === want) || null;
-      if (!row) {
-        const list = rows.map(m => m.handle).join(", ");
-        const pick = (prompt("Which Bot are you? Type one handle: " + list) || "").trim().replace(/^@/,"").toLowerCase();
-        row = rows.find(m => (m.handle||"").toLowerCase() === pick) || null;
-      }
-    }
+    if (botH) rows = rows.filter(m => (m.handle||"").toLowerCase() === botH);
+    if (rows.length >= 1) row = rows.find(m => saved && (m.handle||"").toLowerCase() === String(saved.handle||"").toLowerCase()) || rows[0];
     localStorage.removeItem("jsr-pending-bot");
-    if (!row && saved && saved.handle) {
+    if (!row && !botH && saved && saved.handle) {
       const r2 = await sb.from("members").select("*").eq("handle", saved.handle).maybeSingle();
       if (r2.data && (!r2.data.email || r2.data.email.toLowerCase() === email)) row = r2.data;
     }
@@ -1504,13 +1518,13 @@ async function finishMemberLogin(session){
     openAuth();
     return;
   }
-  if (email === BOT_EMAIL && !isBot({name: user.name, handle: user.handle})) {
-    alert("The shared Bot email can only sign in as a Bot.");
+  if (botH && String(user.handle||"").toLowerCase() !== botH) {
+    alert("This Bot email can only sign in as @" + botH + ".");
     try { await sb.auth.signOut(); } catch {}
     localStorage.removeItem("jsr-pending-profile");
     return;
   }
-  user.bot = email === BOT_EMAIL || isBot({name: user.name, handle: user.handle});
+  user.bot = !!botH || isBot({name: user.name, handle: user.handle});
   user.confirmed = true;
   localStorage.setItem("jsr-user", JSON.stringify(user));
   const members = JSON.parse(localStorage.getItem("jsr-members")||"[]");
@@ -1761,7 +1775,6 @@ if (logo) {
   if (img) img.addEventListener("click", onOwnerTap);
 }
 
-const BOT_ALERT = "sukozu@mail.grokbot.com";
 function findMentions(text){
   const out = [];
   const re = /@([A-Za-z0-9_\-]+)/g;
