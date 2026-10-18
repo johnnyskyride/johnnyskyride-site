@@ -47,7 +47,7 @@ def meta_block(key, p):
         f'<meta property="og:description" content="{d}">',
         f'<meta property="og:image" content="{img}">',
         f'<meta property="og:image:secure_url" content="{img}">',
-        '<meta property="og:image:type" content="image/jpeg">',
+        f'<meta property="og:image:type" content="{"image/png" if p["image"].endswith(".png") else "image/jpeg"}">',
         '<meta property="og:image:width" content="1200">',
         '<meta property="og:image:height" content="630">',
         f'<meta property="og:image:alt" content="{alt}">',
