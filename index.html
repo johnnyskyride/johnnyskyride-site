@@ -320,7 +320,10 @@
   .reply-ctx { cursor:pointer; font-size:14px; padding:8px 10px; }
   .reply-ctx .who span { color:#71767b; }
   .reply-entry .body { word-break:break-word; }
-  .comment.c-flash { background:rgba(255,107,181,.12); transition:background .3s; }
+  .comment.c-flash, .reply-entry.c-flash { background:rgba(255,107,181,.12); transition:background .3s; }
+  #jsr-toast { position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(8px); background:#1d9bf0; color:#fff; font-size:14px; font-weight:600; padding:9px 16px; border-radius:999px; box-shadow:0 4px 14px rgba(0,0,0,.5); opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; z-index:9999; }
+  #jsr-toast.on { opacity:1; transform:translateX(-50%) translateY(0); }
+  @media (max-width: 700px) { #jsr-toast { bottom:84px; } }
   @media (max-width: 700px) { .c-children { margin-left:6px; padding-left:8px; } .c-actions { gap:18px; } }
   .tool { background:#16181c; color:#e7e9ea; border:1px solid #2f3336; border-radius:8px; width:36px; height:32px; cursor:pointer; font-weight:700; }
   .tool:hover { border-color:#ff6bb5; }
@@ -935,14 +938,33 @@ async function toggleLike(id){
     });
   } finally { postLikeBusy.delete(id); }
 }
-function sharePost(id){
-  const url = location.origin + location.pathname + "#post-" + id;
+function showToast(msg){
+  let t = document.getElementById("jsr-toast");
+  if (!t) { t = document.createElement("div"); t.id = "jsr-toast"; t.setAttribute("role", "status"); t.setAttribute("aria-live", "polite"); document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add("on");
+  clearTimeout(showToast._t); showToast._t = setTimeout(() => t.classList.remove("on"), 1800);
+}
+function copyText(text){
+  if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+  return new Promise((res, rej) => {
+    const ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;top:-1000px;opacity:0";
+    document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand("copy"); } catch {}
+    ta.remove(); ok ? res() : rej(new Error("copy failed"));
+  });
+}
+// Share sheet on devices that have one (mobile), otherwise copy the link + toast. No login needed.
+function shareLink(url){
   if (navigator.share) {
     navigator.share({ title: "Johnny Skyride", text: "From johnnyskyride", url }).catch(()=>{});
   } else {
-    navigator.clipboard.writeText(url).then(() => alert("Link copied")).catch(() => prompt("Copy this link:", url));
+    copyText(url).then(() => showToast("Link copied")).catch(() => prompt("Copy this link:", url));
   }
 }
+function siteBase(){ return location.origin + location.pathname; }
+function sharePost(id){ shareLink(siteBase() + "#post-" + encodeURIComponent(id)); }
+function commentHash(kind, cid){ return (kind === "article" ? "ac-" : "c-") + encodeURIComponent(cid); }
+function shareComment(kind, cid){ shareLink(siteBase() + "#" + commentHash(kind, cid)); }
 // Owner, or the comment's author (same rule as the comments/article_comments delete policies)
 function canDeleteComment(handle){
   if (!sb || !currentSession) return false;
@@ -1798,11 +1820,12 @@ function commentHtml(kind, ownerId, c, depth, kids){
     else children = ch.map(x => commentHtml(kind, ownerId, x, depth + 1, kids)).join("");
     children = `<div class="c-children${depth + 1 > THREAD_MAX_INDENT ? " flat" : ""}">${children}</div>`;
   }
-  return `<div class="comment" data-depth="${depth}"><b style="cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">${escapeHtml(c.n)}</b>${commentStar(c)} <span style="color:#71767b;cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">@${escapeHtml(c.h)}</span>${del}<div>${linkMentions(c.t || "")}</div>${media}
+  return `<div class="comment" data-depth="${depth}" data-ckind="${kind}" data-comment="${escapeHtml(c.id)}"><b style="cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">${escapeHtml(c.n)}</b>${commentStar(c)} <span style="color:#71767b;cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">@${escapeHtml(c.h)}</span>${del}<div>${linkMentions(c.t || "")}</div>${media}
     <div class="c-actions">
       <span ${attrs} onclick="openCommentReply(this.dataset.kind, this.dataset.cid)" title="Reply" aria-label="Reply">💬 ${ch.length || ""}</span>
       <span class="starred-only" ${attrs} onclick="openRepostComment(this.dataset.kind, this.dataset.cid)" title="Repost or quote" aria-label="Repost or quote">↻</span>
       <span class="c-heart${liked ? " liked" : ""}" ${attrs} onclick="toggleCommentLike(this.dataset.kind, this.dataset.cid)" title="Heart" aria-label="Heart">${liked ? "♥" : "♡"} <i>${c.likes || ""}</i></span>
+      <span ${attrs} onclick="shareComment(this.dataset.kind, this.dataset.cid)" title="Share" aria-label="Share">↗</span>
     </div>
     <div class="c-reply-slot" id="crs-${kind}-${k}"></div>${children}</div>`;
 }
@@ -2161,6 +2184,7 @@ function replyEntryHtml(e){
         <span ${attrs} onclick="openCommentReply(this.dataset.kind, this.dataset.cid)" title="Reply" aria-label="Reply">💬 ${e.replyCount || ""}</span>
         <span class="starred-only" ${attrs} onclick="openRepostComment(this.dataset.kind, this.dataset.cid)" title="Repost or quote" aria-label="Repost or quote">↻</span>
         <span class="c-heart${liked ? " liked" : ""}" ${attrs} onclick="toggleCommentLike(this.dataset.kind, this.dataset.cid)" title="Heart" aria-label="Heart">${liked ? "♥" : "♡"} <i>${c.likes || ""}</i></span>
+        <span ${attrs} onclick="shareComment(this.dataset.kind, this.dataset.cid)" title="Share" aria-label="Share">↗</span>
       </div>
       <div class="c-reply-slot" id="crs-${kind}-${domKey(c.id)}"></div>
     </div>
@@ -2175,11 +2199,57 @@ async function openReplySource(kind, ownerId, cid){
     document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === "posts"));
   }
   await openEmbedSource(kind === "article" ? "article" : "post", ownerId);
-  await new Promise(r => setTimeout(r, 400));
+  return flashComment(kind, ownerId, cid);
+}
+function findCommentEl(kind, ownerId, cid){
   const scope = kind === "article" ? document.getElementById("art-comments") : document.querySelector(`#feed [data-post="${CSS.escape(ownerId)}"]`);
-  const hit = scope && scope.querySelector(`.c-heart[data-cid="${CSS.escape(cid)}"]`);
-  const el = hit && hit.closest(".comment");
-  if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.add("c-flash"); setTimeout(() => el.classList.remove("c-flash"), 1800); }
+  return scope && scope.querySelector(`.comment[data-ckind="${kind}"][data-comment="${CSS.escape(cid)}"]`);
+}
+// Wait for the thread to render (feed/article comments load async), scroll to the comment and flash it.
+// The feed can re-render shortly after load (session restore), so re-find it if it was replaced.
+async function flashComment(kind, ownerId, cid){
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  let el = null;
+  for (let i = 0; i < 40 && !el; i++) { el = findCommentEl(kind, ownerId, cid); if (!el) await sleep(150); }
+  if (!el) return false;
+  const hit = e => { e.scrollIntoView({ behavior: "smooth", block: "center" }); e.classList.add("c-flash"); setTimeout(() => e.classList.remove("c-flash"), 1800); };
+  hit(el);
+  // Images above it may still be loading and push it down, so keep it centered for a few seconds.
+  for (const wait of [600, 900, 1200, 1500]) {
+    await sleep(wait);
+    if (!el.isConnected) { el = findCommentEl(kind, ownerId, cid); if (el) hit(el); else return false; continue; }
+    const r = el.getBoundingClientRect();
+    if (r.top < 0 || r.bottom > innerHeight) el.scrollIntoView({ block: "center" });
+  }
+  return true;
+}
+// Deep links: #c-<comment id> (post comments), #ac-<comment id> (article comments), #post-<post id>
+async function handleDeepLink(){
+  let h = location.hash.slice(1);
+  try { h = decodeURIComponent(h); } catch {}
+  const m = h.match(/^(ac|c)-(.+)$/), pm = h.match(/^post-(.+)$/);
+  if (!sb || (!m && !pm)) return;
+  if (pm) {
+    if (currentTab !== "posts") { currentTab = "posts"; feedPage = 0; document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === "posts")); }
+    await openEmbedSource("post", pm[1]);
+    return;
+  }
+  const kind = m[1] === "ac" ? "article" : "post", cid = m[2];
+  const table = kind === "article" ? "article_comments" : "comments", ownerCol = kind === "article" ? "article_id" : "post_id";
+  const { data: row, error } = await sb.from(table).select(`id,${ownerCol},parent_id`).eq("id", cid).maybeSingle();
+  if (error) { console.error(error); return; }
+  if (!row) { showToast("That comment is no longer available."); return; }
+  const ownerId = row[ownerCol];
+  const { data: sibs } = await sb.from(table).select("id,parent_id").eq(ownerCol, ownerId);
+  const parentOf = {}; (sibs || []).forEach(r => parentOf[r.id] = r.parent_id || null);
+  let p = row.parent_id, guard = 0;
+  while (p && guard++ < 100) { openThreads.add(ckey(kind, p)); p = parentOf[p]; }
+  await openReplySource(kind, ownerId, cid);
+}
+window.addEventListener("hashchange", () => { handleDeepLink(); });
+if (/^#(c|ac|post)-/.test(location.hash)) {
+  const go = () => setTimeout(handleDeepLink, 300);
+  if (document.readyState === "complete") go(); else window.addEventListener("load", go);
 }
 </script>
 
