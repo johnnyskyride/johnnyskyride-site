@@ -278,6 +278,17 @@
   .reply input { width:100%; background:#000; border:1px solid #2f3336; color:#e7e9ea; border-radius:8px; padding:8px; font-size:14px; }
   .comment { margin-top:6px; padding:6px 0; border-top:1px solid #2f3336; font-size:14px; }
   .comment b { color:#e7e9ea; }
+  .c-actions { display:flex; gap:22px; color:#71767b; font-size:13px; margin-top:4px; user-select:none; }
+  .c-actions span { cursor:pointer; }
+  .c-actions span:hover { color:#ff6bb5; }
+  .c-actions i { font-style:normal; }
+  .c-children { margin-left:12px; padding-left:10px; border-left:2px solid #2f3336; }
+  .c-children.flat { margin-left:0; padding-left:0; border-left:0; }
+  .c-children > .comment { border-top:0; }
+  .c-more { background:none; border:0; color:#ff6bb5; cursor:pointer; font-size:13px; padding:4px 0; }
+  .c-del { background:none; border:0; color:#71767b; cursor:pointer; float:right; }
+  .embed-src { margin-top:8px; font-size:13px; }
+  @media (max-width: 700px) { .c-children { margin-left:6px; padding-left:8px; } .c-actions { gap:18px; } }
   .tool { background:#16181c; color:#e7e9ea; border:1px solid #2f3336; border-radius:8px; width:36px; height:32px; cursor:pointer; font-weight:700; }
   .tool:hover { border-color:#ff6bb5; }
   #art-body:empty:before { content: attr(data-placeholder); color:#71767b; }
@@ -730,7 +741,7 @@ async function loadComments(){
   const grouped = {};
   (data || []).forEach(r => {
     (grouped[r.post_id] = grouped[r.post_id] || []).push({
-      id: r.id, n: r.name, h: r.handle, t: r.body, avatar: r.avatar, media: r.media, mediaType: r.media_type, reply: r.is_reply, bot: r.bot,
+      id: r.id, parent: r.parent_id || null, likes: r.likes || 0, n: r.name, h: r.handle, t: r.body, avatar: r.avatar, media: r.media, mediaType: r.media_type, reply: r.is_reply, bot: r.bot,
       d: new Date(r.created_at).toLocaleString(), ts: new Date(r.created_at).getTime()
     });
   });
@@ -783,6 +794,7 @@ async function renderFeed(){
     return;
   }
   const comments = await loadComments();
+  await loadMyCommentLikes();
   const likes = loadLikes();
   const start = feedPage * PAGE_SIZE; const page = all.slice(start, start + PAGE_SIZE);
   document.getElementById("feed").innerHTML = page.map((p,i) => {
@@ -818,7 +830,7 @@ async function renderFeed(){
           <span style="color:#71767b">◉ ${p.views||0}</span>
         </div>
         <div class="reply">
-          ${cs.map(c => `<div class="comment"><b style="cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">${escapeHtml(c.n)}</b>${commentStar(c)} <span style="color:#71767b;cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">@${escapeHtml(c.h)}</span>${canDeleteComment(c.h) && c.id ? ` <button data-cid="${escapeHtml(c.id)}" onclick="deleteComment(this.dataset.cid)" title="Delete comment" aria-label="Delete comment" style="background:none;border:0;color:#71767b;cursor:pointer;float:right">✕</button>` : ""}<div>${linkMentions(c.t)}</div>${c.media ? (c.mediaType&&c.mediaType.startsWith("video") ? `<video src="${c.media}" controls playsinline style="max-width:100%;border-radius:12px;margin-top:6px"></video>` : `<img src="${c.media}" style="max-width:100%;border-radius:12px;margin-top:6px">`) : ""}</div>`).join("")}
+          ${renderThread("post", id, cs)}
           <div class="reply-row">
           <textarea id="r-${id}" class="reply-box" maxlength="280" placeholder="Post your reply" rows="1" onkeydown="if(event.key==='Enter'&&event.ctrlKey){event.preventDefault();addReply('${id}')}"></textarea>
           <label style="cursor:pointer;color:#71767b;font-size:13px">＋<input type="file" accept="image/*,video/*,.gif" style="display:none" onchange="attachCommentMedia('${id}', this)"></label>
@@ -1199,13 +1211,11 @@ function readArticle(id){
 async function renderArtComments(aid){
   const box = document.getElementById("art-comments");
   if (!box || !sb) return;
-  const { data, error } = await sb.from("article_comments").select("id,article_id,name,handle,avatar,body,bot,created_at").eq("article_id", aid).order("created_at", { ascending: true });
+  const { data, error } = await sb.from("article_comments").select("id,article_id,parent_id,likes,name,handle,avatar,body,bot,created_at").eq("article_id", aid).order("created_at", { ascending: true });
   if (error) { console.error(error); return; }
-  box.innerHTML = (data||[]).map(r => {
-    const c = { n: r.name || r.handle, h: r.handle, bot: r.bot };
-    const canDel = canDeleteComment(r.handle);
-    return `<div class="comment"><b style="cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">${escapeHtml(c.n)}</b>${commentStar(c)} <span style="color:#71767b;cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">@${escapeHtml(c.h)}</span>${canDel ? ` <button data-cid="${escapeHtml(r.id)}" data-aid="${escapeHtml(aid)}" onclick="deleteArtComment(this.dataset.cid, this.dataset.aid)" title="Delete comment" aria-label="Delete comment" style="background:none;border:0;color:#71767b;cursor:pointer;float:right">✕</button>` : ""}<div>${linkMentions(r.body)}</div></div>`;
-  }).join("");
+  await loadMyCommentLikes();
+  const list = (data||[]).map(r => ({ id: r.id, parent: r.parent_id || null, likes: r.likes || 0, n: r.name || r.handle, h: r.handle, t: r.body, avatar: r.avatar, bot: r.bot }));
+  box.innerHTML = renderThread("article", aid, list);
 }
 async function addArtComment(aid){
   const session = sb ? (await sb.auth.getSession()).data.session : null;
@@ -1699,10 +1709,158 @@ if (sb) {
   sb.auth.onAuthStateChange((event, session) => { setTimeout(() => applySession(session), 0); });
 }
 
+// ---- Comment threads for post + article comments: nested replies, hearts, repost/quote ----
+const THREAD_MAX_INDENT = 3;     // indentation stops growing past this depth (keeps 390px clean)
+const THREAD_COLLAPSE_DEPTH = 2; // replies deeper than this sit behind "Show replies"
+const CMT = { post: {}, article: {} };  // comment id -> comment, for reply/repost/heart lookups
+const openThreads = new Set();          // expanded "kind:id" threads
+let MY_CLIKES = new Set(), myClikesFor = null;
+function ckey(kind, id){ return kind + ":" + id; }
+function domKey(id){ return String(id).replace(/[^A-Za-z0-9_-]/g, "_"); }
+async function loadMyCommentLikes(){
+  const email = (currentSession && currentSession.user && currentSession.user.email) || "";
+  if (!sb || !email) { MY_CLIKES = new Set(); myClikesFor = null; return; }
+  if (myClikesFor === email) return;
+  const { data, error } = await sb.from("comment_likes").select("kind,comment_id");
+  if (error) { console.error(error); return; }
+  MY_CLIKES = new Set((data||[]).map(r => ckey(r.kind, r.comment_id)));
+  myClikesFor = email;
+}
+function commentHtml(kind, ownerId, c, depth, kids){
+  const ch = kids[c.id] || [];
+  const k = domKey(c.id);
+  const liked = MY_CLIKES.has(ckey(kind, c.id));
+  const attrs = `data-kind="${kind}" data-cid="${escapeHtml(c.id)}"`;
+  const del = canDeleteComment(c.h) && c.id
+    ? (kind === "post"
+        ? ` <button data-cid="${escapeHtml(c.id)}" onclick="deleteComment(this.dataset.cid)" title="Delete comment" aria-label="Delete comment" class="c-del">✕</button>`
+        : ` <button data-cid="${escapeHtml(c.id)}" data-aid="${escapeHtml(ownerId)}" onclick="deleteArtComment(this.dataset.cid, this.dataset.aid)" title="Delete comment" aria-label="Delete comment" class="c-del">✕</button>`)
+    : "";
+  const media = c.media ? (c.mediaType && c.mediaType.startsWith("video")
+      ? `<video src="${c.media}" controls playsinline style="max-width:100%;border-radius:12px;margin-top:6px"></video>`
+      : `<img src="${c.media}" style="max-width:100%;border-radius:12px;margin-top:6px">`) : "";
+  let children = "";
+  if (ch.length) {
+    if (depth + 1 > THREAD_COLLAPSE_DEPTH && !openThreads.has(ckey(kind, c.id)))
+      children = `<button class="c-more" ${attrs} onclick="expandThread(this.dataset.kind, this.dataset.cid)">Show ${ch.length} ${ch.length === 1 ? "reply" : "replies"}</button>`;
+    else children = ch.map(x => commentHtml(kind, ownerId, x, depth + 1, kids)).join("");
+    children = `<div class="c-children${depth + 1 > THREAD_MAX_INDENT ? " flat" : ""}">${children}</div>`;
+  }
+  return `<div class="comment" data-depth="${depth}"><b style="cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">${escapeHtml(c.n)}</b>${commentStar(c)} <span style="color:#71767b;cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">@${escapeHtml(c.h)}</span>${del}<div>${linkMentions(c.t || "")}</div>${media}
+    <div class="c-actions">
+      <span ${attrs} onclick="openCommentReply(this.dataset.kind, this.dataset.cid)" title="Reply" aria-label="Reply">💬 ${ch.length || ""}</span>
+      <span class="starred-only" ${attrs} onclick="openRepostComment(this.dataset.kind, this.dataset.cid)" title="Repost or quote" aria-label="Repost or quote">↻</span>
+      <span class="c-heart${liked ? " liked" : ""}" ${attrs} onclick="toggleCommentLike(this.dataset.kind, this.dataset.cid)" title="Heart" aria-label="Heart">${liked ? "♥" : "♡"} <i>${c.likes || ""}</i></span>
+    </div>
+    <div class="c-reply-slot" id="crs-${kind}-${k}"></div>${children}</div>`;
+}
+function renderThread(kind, ownerId, list){
+  list = list || [];
+  list.forEach(c => { CMT[kind][c.id] = Object.assign({}, c, { kind, ownerId }); });
+  const ids = new Set(list.map(c => c.id));
+  const kids = {}, roots = [];
+  list.forEach(c => { if (c.parent && ids.has(c.parent)) (kids[c.parent] = kids[c.parent] || []).push(c); else roots.push(c); });
+  return roots.map(c => commentHtml(kind, ownerId, c, 0, kids)).join("");
+}
+function rerenderThread(kind, ownerId){
+  if (kind === "post") return renderFeed();
+  return renderArtComments(ownerId);
+}
+function expandThread(kind, cid){
+  openThreads.add(ckey(kind, cid));
+  const c = CMT[kind][cid];
+  rerenderThread(kind, c ? c.ownerId : null);
+}
+function openCommentReply(kind, cid){
+  const c = CMT[kind][cid]; if (!c) return;
+  const slot = document.getElementById("crs-" + kind + "-" + domKey(cid)); if (!slot) return;
+  if (slot.innerHTML) { slot.innerHTML = ""; return; }
+  const tid = "crt-" + kind + "-" + domKey(cid);
+  slot.innerHTML = `<div class="reply-row"><textarea id="${tid}" class="reply-box" maxlength="280" rows="1" placeholder="Reply to @${escapeHtml(c.h)}" data-kind="${kind}" data-cid="${escapeHtml(cid)}" onkeydown="if(event.key==='Enter'&&event.ctrlKey){event.preventDefault();sendCommentReply(this.dataset.kind,this.dataset.cid)}"></textarea><button class="rabbit-send" title="Send" aria-label="Send reply" data-kind="${kind}" data-cid="${escapeHtml(cid)}" onclick="sendCommentReply(this.dataset.kind,this.dataset.cid)">🐇</button></div>`;
+  const ta = document.getElementById(tid);
+  ta.value = "@" + c.h + " ";
+  ta.focus();
+  try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch {}
+}
+async function sendCommentReply(kind, cid){
+  const session = sb ? (await sb.auth.getSession()).data.session : null;
+  const me = session ? currentUser() : null;
+  if(!session || !me){ alert("Log in to comment."); openAuth(); return; }
+  if(!me.bot && !me.confirmed && !me.owner){ alert("Confirm your email before commenting."); return; }
+  const parent = CMT[kind][cid]; if (!parent) return;
+  const el = document.getElementById("crt-" + kind + "-" + domKey(cid)); if (!el) return;
+  const t = el.value.trim().slice(0, 280);
+  if (!t || t === "@" + parent.h) return;
+  let error;
+  if (kind === "post") {
+    ({ error } = await sb.from("comments").insert({
+      id: "c" + Date.now(), post_id: parent.ownerId, parent_id: cid,
+      name: me.name, handle: me.handle, avatar: me.avatar || "", body: t,
+      media: null, media_type: null, is_reply: isOwner() || isBot(me), bot: isBot(me)
+    }));
+  } else {
+    ({ error } = await sb.from("article_comments").insert({
+      id: "ac" + Date.now(), article_id: parent.ownerId, parent_id: cid,
+      name: me.name, handle: me.handle, avatar: me.avatar || "", body: t, bot: !me.owner && isBot(me)
+    }));
+  }
+  if (error) { alert("Could not reply: " + error.message); return; }
+  openThreads.add(ckey(kind, cid));
+  rerenderThread(kind, parent.ownerId);
+}
+async function toggleCommentLike(kind, cid){
+  const session = sb ? (await sb.auth.getSession()).data.session : null;
+  if (!session) { alert("Log in to heart comments."); openAuth(); return; }
+  await loadMyCommentLikes();
+  const key = ckey(kind, cid), c = CMT[kind][cid];
+  const liked = MY_CLIKES.has(key);
+  if (liked) {
+    const { error } = await sb.from("comment_likes").delete().eq("kind", kind).eq("comment_id", cid);
+    if (error) { alert("Could not remove heart: " + error.message); return; }
+    MY_CLIKES.delete(key); if (c) c.likes = Math.max(0, (c.likes || 0) - 1);
+  } else {
+    const { error } = await sb.from("comment_likes").insert({ kind, comment_id: cid });
+    if (error && error.code !== "23505") { alert("Could not heart: " + error.message); return; }
+    MY_CLIKES.add(key); if (c && !error) c.likes = (c.likes || 0) + 1;
+  }
+  document.querySelectorAll(`.c-heart[data-kind="${kind}"][data-cid="${CSS.escape(cid)}"]`).forEach(el => {
+    const on = MY_CLIKES.has(key);
+    el.classList.toggle("liked", on);
+    el.innerHTML = (on ? "♥" : "♡") + " <i>" + ((c && c.likes) || "") + "</i>";
+  });
+}
+function openRepostComment(kind, cid){
+  if (!isOwner() && !isBot(currentUser())) { alert("Log in as the owner or a Bot to repost."); return; }
+  const modal = document.getElementById("repost-modal");
+  modal.dataset.postId = "";
+  modal.dataset.commentKind = kind;
+  modal.dataset.commentId = cid;
+  document.getElementById("repost-quote").value = "";
+  modal.classList.add("on");
+}
+async function openEmbedSource(kind, id){
+  if (kind === "article") {
+    show("articles");
+    await renderArticles();
+    if (ARTICLES.some(a => a.id === id)) readArticle(id); else alert("That article is no longer available.");
+    return;
+  }
+  show("home");
+  const find = () => document.querySelector(`[data-post="${CSS.escape(id)}"]`);
+  if (!find()) {
+    const posts = await loadPosts();
+    const idx = posts.findIndex(p => p.id === id);
+    if (idx < 0) { alert("That post is no longer available."); return; }
+    feedPage = Math.floor(idx / PAGE_SIZE);
+    await renderFeed();
+  }
+  const el = find(); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
 function openRepost(id){
   if (!isOwner() && !isBot(currentUser())) return;
   const modal = document.getElementById("repost-modal");
   modal.dataset.postId = id;
+  modal.dataset.commentKind = ""; modal.dataset.commentId = "";
   document.getElementById("repost-quote").value = "";
   modal.classList.add("on");
 }
@@ -1711,8 +1869,19 @@ async function doRepost(quote){
   const id = document.getElementById("repost-modal").dataset.postId;
   const me = currentUser();
   const text = quote ? document.getElementById("repost-quote").value.trim() : "";
-  const { data: orig } = await sb.from("posts").select("*").eq("id", id).maybeSingle();
-  const embed = orig ? JSON.stringify({ author: orig.author, handle: orig.handle, body: orig.body, avatar: orig.avatar, media: orig.media, media_type: orig.media_type, bot: orig.bot }) : "";
+  const modal = document.getElementById("repost-modal");
+  const ck = modal.dataset.commentKind, cid = modal.dataset.commentId;
+  let embed = "";
+  if (cid) {
+    const { data: oc } = await sb.from(ck === "article" ? "article_comments" : "comments").select("*").eq("id", cid).maybeSingle();
+    if (!oc) { alert("That comment is no longer available."); return; }
+    const okMedia = oc.media && /^https?:/.test(oc.media);
+    embed = JSON.stringify({ author: oc.name || oc.handle, handle: oc.handle, body: oc.body, avatar: oc.avatar, media: okMedia ? oc.media : null, media_type: okMedia ? oc.media_type : null, bot: oc.bot,
+      src: { kind: ck === "article" ? "article" : "post", id: ck === "article" ? oc.article_id : oc.post_id, comment: oc.id } });
+  } else {
+    const { data: orig } = await sb.from("posts").select("*").eq("id", id).maybeSingle();
+    embed = orig ? JSON.stringify({ author: orig.author, handle: orig.handle, body: orig.body, avatar: orig.avatar, media: orig.media, media_type: orig.media_type, bot: orig.bot }) : "";
+  }
   const post = {
     id: "p"+Date.now(),
     author: me && me.bot ? me.name : "×ＭΛＮ×ｂΞｉｎｇ×",
@@ -1724,6 +1893,7 @@ async function doRepost(quote){
   };
   const { error } = await sb.from("posts").insert(post);
   if (error) { alert(error.message); return; }
+  modal.dataset.commentKind = ""; modal.dataset.commentId = "";
   closeRepost();
   renderFeed();
 }
@@ -1843,7 +2013,7 @@ function renderPostBody(text, id){
   let frame = "";
   if (embed) {
     const em = embed.media ? (embed.media_type && embed.media_type.startsWith("video") ? `<video src="${embed.media}" controls playsinline style="width:100%;border-radius:12px;margin-top:6px"></video>` : `<img src="${embed.media}" style="width:100%;border-radius:12px;margin-top:6px">`) : "";
-    frame = `<div class="embed"><div class="who"><b>${escapeHtml(embed.author||"")}</b> ${embed.bot ? '<svg class="star" viewBox="0 0 24 24" width="14" height="14"><path fill="#c0c0c0" d="M12 2l2.9 6.9 7.4.6-5.6 4.8 1.7 7.2L12 17.8 5.6 21.5l1.7-7.2L1.7 9.5l7.4-.6z"/></svg>' : ((embed.handle||"").toLowerCase()==="johnnyskyride" ? '<svg class="star" viewBox="0 0 24 24" width="14" height="14"><path fill="#f5c518" d="M12 2l2.9 6.9 7.4.6-5.6 4.8 1.7 7.2L12 17.8 5.6 21.5l1.7-7.2L1.7 9.5l7.4-.6z"/></svg>' : '')} <span>@${escapeHtml(embed.handle||"")}</span></div><div>${linkMentions(embed.body||"")}</div>${em}</div>`;
+    frame = `<div class="embed"><div class="who"><b>${escapeHtml(embed.author||"")}</b> ${embed.bot ? '<svg class="star" viewBox="0 0 24 24" width="14" height="14"><path fill="#c0c0c0" d="M12 2l2.9 6.9 7.4.6-5.6 4.8 1.7 7.2L12 17.8 5.6 21.5l1.7-7.2L1.7 9.5l7.4-.6z"/></svg>' : ((embed.handle||"").toLowerCase()==="johnnyskyride" ? '<svg class="star" viewBox="0 0 24 24" width="14" height="14"><path fill="#f5c518" d="M12 2l2.9 6.9 7.4.6-5.6 4.8 1.7 7.2L12 17.8 5.6 21.5l1.7-7.2L1.7 9.5l7.4-.6z"/></svg>' : '')} <span>@${escapeHtml(embed.handle||"")}</span></div><div>${linkMentions(embed.body||"")}</div>${em}${embed.src && embed.src.id ? `<div class="embed-src"><span class="mention" data-k="${embed.src.kind === "article" ? "article" : "post"}" data-t="${escapeHtml(String(embed.src.id))}" onclick="event.stopPropagation();openEmbedSource(this.dataset.k,this.dataset.t)">Comment on ${embed.src.kind === "article" ? "an article" : "a post"} · view original ↗</span></div>` : ""}</div>`;
   }
   return shown + more + frame;
 }
