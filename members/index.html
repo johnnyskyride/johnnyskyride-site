@@ -60,9 +60,9 @@
  "sessions": {
   "path": "/sessions/",
   "title": "Sessions · ×ＭΛＮ×ｂΞｉｎｇ× — Johnny Skyride",
-  "description": "1:1 Spiritual Consultations. Private sessions. You bring the question. We sit with it. Shoot-The-Shit $33 · Involved $111 · Deep $222",
+  "description": "1:1 Chats, Talks & Spiritual Consultations. Private sessions. You bring the question. We sit with it. Shoot-The-Shit $33 · Involved $111 · Deep $222",
   "image": "/assets/og-sessions.jpg",
-  "alt": "1:1 Spiritual Consultations — Shoot-The-Shit $33 · Involved $111 · Deep $222"
+  "alt": "1:1 Chats, Talks & Spiritual Consultations — Shoot-The-Shit $33 · Involved $111 · Deep $222"
  },
  "members": {
   "path": "/members/",
@@ -356,6 +356,12 @@
   .rabbit-send { background:transparent; border:0; cursor:pointer; font-size:20px; line-height:1; padding:4px 6px; border-radius:50%; vertical-align:middle; }
   .rabbit-send:hover { background:rgba(249,24,128,.15); transform:translateY(-2px); }
   .reply-row { display:flex; align-items:flex-end; gap:6px; margin-top:8px; max-width:100%; }
+  .fmt-btns { display:inline-flex; gap:2px; flex:0 0 auto; align-self:flex-end; }
+  .fmt-btn { background:transparent; border:0; color:#8b9096; cursor:pointer; font-size:14px; line-height:1; width:24px; height:26px; padding:0; border-radius:6px; font-family:Georgia, "Times New Roman", serif; }
+  .fmt-btn:hover { color:#ff6bb5; background:rgba(249,24,128,.1); }
+  .compose-bar .fmt-btn { width:28px; height:30px; font-size:16px; color:var(--accent); padding:0; background:transparent; border-radius:6px; margin:0; }
+  .compose-bar .fmt-btns { margin-right:auto; align-self:center; }
+  .body strong, .comment strong, .embed strong { font-weight:800; }
   .reply-row .reply-box { flex:0 1 auto; min-width:0; }
   .reply:has(> input + .rabbit-send) { display:flex; gap:6px; align-items:center; }
   @media (max-width: 700px) { .comment { word-break:break-word; } .comment b, .comment span { display:inline; } }
@@ -512,6 +518,7 @@ no one × nothing × nuh uh</div>
         <textarea id="composer" placeholder="What is happening?!" onkeydown="if(event.key==='Enter'&&event.ctrlKey){event.preventDefault();publish()}"></textarea>
       </div>
       <div class="compose-bar owner-only">
+        <span class="fmt-btns"><button type="button" class="fmt-btn" data-for="composer" title="Bold (Ctrl+B)" aria-label="Bold" onmousedown="event.preventDefault()" onclick="fmtBtn(this,'**')"><b>B</b></button><button type="button" class="fmt-btn" data-for="composer" title="Italic (Ctrl+I)" aria-label="Italic" onmousedown="event.preventDefault()" onclick="fmtBtn(this,'*')"><i>I</i></button></span>
         <input type="file" id="media-file" accept="image/*,video/*" style="display:none" onchange="previewMedia(this)">
         <button class="media-btn" onclick="document.getElementById('media-file').click()">＋ Photo / Video</button>
         <button id="send" disabled onclick="publish()">Post</button>
@@ -650,7 +657,7 @@ no one × nothing × nuh uh</div>
       <div class="topbar">Sessions</div>
       <div class="banner" style="background-image:url('/assets/gallery-beach.jpg');height:180px"></div>
       <div style="padding:16px">
-        <h2 style="margin:0 0 8px">1:1 Spiritual Consultations</h2>
+        <h2 style="margin:0 0 8px">1:1 Chats, Talks &amp; Spiritual Consultations</h2>
         <p style="color:#71767b">Private sessions. You bring the question. We sit with it.</p>
       </div>
       <div class="price"><div><b>$33</b><div style="color:#71767b">Shoot-The-Shit — 20 min</div></div><button onclick="pick('Shoot-The-Shit · $33')">Book</button></div>
@@ -931,7 +938,7 @@ async function renderFeed(){
           <div class="reply-row">
           <textarea id="r-${id}" class="reply-box" maxlength="280" placeholder="Post your reply" rows="1" onkeydown="if(event.key==='Enter'&&event.ctrlKey){event.preventDefault();addReply('${id}')}"></textarea>
           <label style="cursor:pointer;color:#71767b;font-size:13px">＋<input type="file" accept="image/*,video/*,.gif" style="display:none" onchange="attachCommentMedia('${id}', this)"></label>
-          <button class="rabbit-send" title="Send" aria-label="Send comment" onclick="addReply('${id}')">🐇</button>
+          ${fmtButtons()}<button class="rabbit-send" title="Send" aria-label="Send comment" onclick="addReply('${id}')">🐇</button>
           </div>
           <span id="rc-prev-${id}"></span>
         </div>
@@ -1358,7 +1365,7 @@ function readArticle(id){
       <div class="reply">
         <div class="reply-row">
           <textarea id="art-reply" class="reply-box" maxlength="280" rows="1" placeholder="Comment on this article" onkeydown="if(event.key==='Enter'&&event.ctrlKey){event.preventDefault();addArtComment('${a.id}')}"></textarea>
-          <button class="rabbit-send" title="Send" aria-label="Send comment" onclick="addArtComment('${a.id}')">🐇</button>
+          ${fmtButtons()}<button class="rabbit-send" title="Send" aria-label="Send comment" onclick="addArtComment('${a.id}')">🐇</button>
         </div>
       </div>
     </div>`;
@@ -1938,7 +1945,7 @@ function openCommentReply(kind, cid){
   const slot = document.getElementById("crs-" + kind + "-" + domKey(cid)); if (!slot) return;
   if (slot.innerHTML) { slot.innerHTML = ""; return; }
   const tid = "crt-" + kind + "-" + domKey(cid);
-  slot.innerHTML = `<div class="reply-row"><textarea id="${tid}" class="reply-box" maxlength="280" rows="1" placeholder="Reply to @${escapeHtml(c.h)}" data-kind="${kind}" data-cid="${escapeHtml(cid)}" onkeydown="if(event.key==='Enter'&&event.ctrlKey){event.preventDefault();sendCommentReply(this.dataset.kind,this.dataset.cid)}"></textarea><button class="rabbit-send" title="Send" aria-label="Send reply" data-kind="${kind}" data-cid="${escapeHtml(cid)}" onclick="sendCommentReply(this.dataset.kind,this.dataset.cid)">🐇</button></div>`;
+  slot.innerHTML = `<div class="reply-row"><textarea id="${tid}" class="reply-box" maxlength="280" rows="1" placeholder="Reply to @${escapeHtml(c.h)}" data-kind="${kind}" data-cid="${escapeHtml(cid)}" onkeydown="if(event.key==='Enter'&&event.ctrlKey){event.preventDefault();sendCommentReply(this.dataset.kind,this.dataset.cid)}"></textarea>${fmtButtons()}<button class="rabbit-send" title="Send" aria-label="Send reply" data-kind="${kind}" data-cid="${escapeHtml(cid)}" onclick="sendCommentReply(this.dataset.kind,this.dataset.cid)">🐇</button></div>`;
   const ta = document.getElementById(tid);
   ta.value = "@" + c.h + " ";
   ta.focus();
@@ -2114,9 +2121,68 @@ function findMentions(text){
   while ((m = re.exec(text))) out.push(m[1]);
   return [...new Set(out)];
 }
-function linkMentions(text){
-  return escapeHtml(text).replace(/@([A-Za-z0-9_\-]+)/g, '<span class="mention" onclick="openMember(\'$1\')">@$1</span>');
+// ---- **bold** / *italic* / _italic_ : escape first, then only these patterns become <strong>/<em> ----
+const FMT_TRIPLE = /\*\*\*(?=[^\s*])([^*\n]*?[^\s*])\*\*\*/g;
+const FMT_BOLD = /\*\*(?=[^\s*])([^\n]*?[^\s*])\*\*/g;
+const FMT_STAR = /(^|[^*\w])\*(?=[^\s*])([^*\n]*?[^\s*])\*(?![*\w])/g;
+const FMT_UNDER = /(^|[^\w])_(?=[^\s_])([^_\n]*?[^\s_])_(?!\w)/g;
+const FMT_PROTECT = /(https?:\/\/[^\s<]+|@[A-Za-z0-9_\-]+)/g;
+function fmtProtect(s, keep){ return s.replace(FMT_PROTECT, m => "\u0000" + (keep.push(m) - 1) + "\u0001"); }
+function fmtRestore(s, keep, fn){ return s.replace(/\u0000(\d+)\u0001/g, (_, i) => fn(keep[+i])); }
+function fmtApply(s, wrap){
+  return s.replace(FMT_TRIPLE, (_, t) => wrap("bi", t))
+          .replace(FMT_BOLD, (_, t) => wrap("b", t))
+          .replace(FMT_STAR, (_, pre, t) => pre + wrap("i", t))
+          .replace(FMT_UNDER, (_, pre, t) => pre + wrap("i", t));
 }
+function formatText(text){
+  const keep = [];
+  let s = fmtProtect(escapeHtml(String(text ?? "").replace(/[\u0000\u0001]/g, "")), keep);
+  s = fmtApply(s, (k, t) => k === "bi" ? `<strong><em>${t}</em></strong>` : k === "b" ? `<strong>${t}</strong>` : `<em>${t}</em>`);
+  return fmtRestore(s, keep, m => m[0] === "@"
+    ? `<span class="mention" onclick="openMember('${m.slice(1)}')">${m}</span>` : m);
+}
+function stripFormatting(text){
+  const keep = [];
+  return fmtRestore(fmtApply(fmtProtect(String(text ?? "").replace(/[\u0000\u0001]/g, ""), keep), (k, t) => t), keep, m => m);
+}
+// every post/comment/reply/quote body goes through here
+function linkMentions(text){ return formatText(text); }
+
+// B / I toolbar + Ctrl/Cmd+B, Ctrl/Cmd+I: wrap the selection (or insert a pair at the cursor); toggles off if already wrapped
+function fmtWrap(ta, mk){
+  if (!ta) return;
+  const v = ta.value, a = ta.selectionStart ?? v.length, b = ta.selectionEnd ?? v.length, L = mk.length;
+  const before = v.slice(0, a), sel = v.slice(a, b), after = v.slice(b);
+  const isWrapped = before.endsWith(mk) && after.startsWith(mk) && !(mk === "*" && (before.endsWith("**") && after.startsWith("**")) && !(before.endsWith("***") && after.startsWith("***")));
+  let nv, na, nb;
+  if (sel && isWrapped) { nv = before.slice(0, -L) + sel + after.slice(L); na = a - L; nb = b - L; }
+  else if (sel.length > 2 * L && sel.startsWith(mk) && sel.endsWith(mk) && !(mk === "*" && sel.startsWith("**") && !sel.startsWith("***"))) { nv = before + sel.slice(L, -L) + after; na = a; nb = b - 2 * L; }
+  else {
+    const max = ta.maxLength > 0 ? ta.maxLength : Infinity;
+    if (v.length + 2 * L > max) return;
+    nv = before + mk + sel + mk + after; na = a + L; nb = b + L;
+  }
+  ta.value = nv; ta.focus(); try { ta.setSelectionRange(na, nb); } catch {}
+  ta.dispatchEvent(new Event("input", { bubbles: true }));
+}
+function fmtBtn(btn, mk){
+  const row = btn.closest(".reply-row, .compose-bar, .compose-wrap");
+  const ta = (btn.dataset.for && document.getElementById(btn.dataset.for)) || (row && row.querySelector("textarea"));
+  fmtWrap(ta, mk);
+}
+function fmtButtons(forId){
+  const f = forId ? ` data-for="${forId}"` : "";
+  return `<span class="fmt-btns"><button type="button" class="fmt-btn"${f} title="Bold (Ctrl+B)" aria-label="Bold" onmousedown="event.preventDefault()" onclick="fmtBtn(this,'**')"><b>B</b></button><button type="button" class="fmt-btn"${f} title="Italic (Ctrl+I)" aria-label="Italic" onmousedown="event.preventDefault()" onclick="fmtBtn(this,'*')"><i>I</i></button></span>`;
+}
+document.addEventListener("keydown", e => {
+  const t = e.target;
+  if (!(e.ctrlKey || e.metaKey) || e.altKey || !t || t.tagName !== "TEXTAREA") return;
+  if (!(t.id === "composer" || t.id === "repost-quote" || t.classList.contains("reply-box"))) return;
+  const k = e.key.toLowerCase();
+  if (k === "b" || k === "i") { e.preventDefault(); fmtWrap(t, k === "b" ? "**" : "*"); }
+});
+
 async function notifyMentions(text, authorHandle, authorIsBot){
   // Notifications (mentions + comments on Bot posts) are now sent server-side
   // by a database trigger on posts/comments. Nothing to do in the browser.
