@@ -288,6 +288,11 @@
   .c-more { background:none; border:0; color:#ff6bb5; cursor:pointer; font-size:13px; padding:4px 0; }
   .c-del { background:none; border:0; color:#71767b; cursor:pointer; float:right; }
   .embed-src { margin-top:8px; font-size:13px; }
+  .reply-to { color:#71767b; font-size:13px; margin:2px 0 4px; cursor:pointer; }
+  .reply-ctx { cursor:pointer; font-size:14px; padding:8px 10px; }
+  .reply-ctx .who span { color:#71767b; }
+  .reply-entry .body { word-break:break-word; }
+  .comment.c-flash { background:rgba(255,107,181,.12); transition:background .3s; }
   @media (max-width: 700px) { .c-children { margin-left:6px; padding-left:8px; } .c-actions { gap:18px; } }
   .tool { background:#16181c; color:#e7e9ea; border:1px solid #2f3336; border-radius:8px; width:36px; height:32px; cursor:pointer; font-weight:700; }
   .tool:hover { border-color:#ff6bb5; }
@@ -726,7 +731,6 @@ async function loadPosts(){
     id: r.id, t: r.body, d: new Date(r.created_at).toLocaleString(), ts: new Date(r.created_at).getTime(),
     author: r.author, handle: r.handle, avatar: r.avatar, mediaType: r.media_type, bot: r.bot, likes: r.likes || 0, views: r.views || 0
   }));
-  loadMedia(posts.map(p => p.id));
   return posts;
 }
 async function savePosts(posts){
@@ -751,6 +755,7 @@ async function saveComments(){ /* comments saved individually */ }
 function loadLikes(){ try { return JSON.parse(localStorage.getItem("jsr-likes")||"{}"); } catch { return {}; } }
 function saveLikes(o){ localStorage.setItem("jsr-likes", JSON.stringify(o)); }
 let currentTab = "posts";
+let feedRenderSeq = 0;
 document.querySelectorAll(".tabs button").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".tabs button").forEach(b => b.classList.remove("active"));
@@ -765,28 +770,22 @@ let feedPage = 0;
 const PAGE_SIZE = 17;
 function feedGo(n){ feedPage = n; renderFeed(); window.scrollTo(0,0); }
 async function renderFeed(){
+  const seq = ++feedRenderSeq;           // only the newest render may paint (tabs can't overwrite each other)
+  const tab = currentTab;
   const mine = await loadPosts();
+  if (seq !== feedRenderSeq) return;
   let all = mine.concat(SEED);
-  if (currentTab === "media") all = all.filter(p => p.media || p.mediaType);
-  if (currentTab === "replies") {
-    const comments = await loadComments();
-    const replies = [];
-    Object.entries(comments).forEach(([pid, cs]) => {
-      cs.forEach(c => { if (c.reply) replies.push({...c, postId: pid}); });
-    });
-    if (!replies.length) {
-      document.getElementById("feed").innerHTML = '<div style="padding:40px 16px;color:#71767b;text-align:center">No replies yet.</div>';
+  if (tab === "media") all = all.filter(p => p.media || p.mediaType);
+  if (tab === "replies") {
+    const entries = await loadReplyEntries(mine);
+    await loadMyCommentLikes();
+    if (seq !== feedRenderSeq) return;
+    const feed = document.getElementById("feed");
+    if (!entries.length) {
+      feed.innerHTML = '<div style="padding:40px 16px;color:#71767b;text-align:center">No replies yet.</div>';
       return;
     }
-    document.getElementById("feed").innerHTML = replies.map(r => `
-      <article class="post" data-post="${id}">
-        <img class="av" src="${r.avatar || (r.handle === "johnnyskyride" && OWNER_AV) || AV}" alt="">
-        <div style="flex:1">
-          <div class="who"><b>${escapeHtml(r.n)}</b> ${r.bot ? '<svg class="star" viewBox="0 0 24 24" width="16" height="16"><path fill="#c0c0c0" d="M12 2l2.9 6.9 7.4.6-5.6 4.8 1.7 7.2L12 17.8 5.6 21.5l1.7-7.2L1.7 9.5l7.4-.6z"/></svg>' : ''}<span>@${escapeHtml(r.h)}</span></div>
-          <div class="body">${escapeHtml(r.t)}</div>
-          <div style="color:#71767b;font-size:13px;margin-top:4px">${r.d || ""} · Reply to a comment</div>
-        </div>
-      </article>`).join("");
+    feed.innerHTML = entries.slice(0, 100).map(replyEntryHtml).join("");
     return;
   }
   if (!all.length) {
@@ -795,6 +794,7 @@ async function renderFeed(){
   }
   const comments = await loadComments();
   await loadMyCommentLikes();
+  if (seq !== feedRenderSeq) return;
   const likes = loadLikes();
   const start = feedPage * PAGE_SIZE; const page = all.slice(start, start + PAGE_SIZE);
   document.getElementById("feed").innerHTML = page.map((p,i) => {
@@ -821,7 +821,7 @@ async function renderFeed(){
           </div>
         </div>
         <div class="body" id="body-${id}">${(function(){ try { return renderPostBody(p.t, id); } catch(e){ return escapeHtml(p.t||""); } })()}</div>
-        ${p.mediaType ? `<div class="post-media"></div>` : ""}
+        ${mediaHtml(id, p)}
         <div class="actions">
           <span onclick="focusReply('${id}')">💬 ${cs.length}</span>
           <span class="starred-only" onclick="openRepost('${id}')">↻</span>
@@ -841,6 +841,7 @@ async function renderFeed(){
       </div>
     </article>`;
   }).join("");
+  fillMedia(page);
   bumpViews(page.map(p => p.id));
   const pages = Math.ceil(all.length / PAGE_SIZE);
   if (pages > 1) {
@@ -1763,7 +1764,7 @@ function renderThread(kind, ownerId, list){
   return roots.map(c => commentHtml(kind, ownerId, c, 0, kids)).join("");
 }
 function rerenderThread(kind, ownerId){
-  if (kind === "post") return renderFeed();
+  if (kind === "post" || !document.getElementById("art-comments")) return renderFeed();
   return renderArtComments(ownerId);
 }
 function expandThread(kind, cid){
@@ -2018,17 +2019,116 @@ function renderPostBody(text, id){
   return shown + more + frame;
 }
 
-async function loadMedia(ids){
-  if (!sb || !ids.length) return;
-  for (const id of ids){
-    const { data } = await sb.from("posts").select("media,media_type").eq("id", id).maybeSingle();
-    if (data && data.media) {
-      const el = document.querySelector(`[data-post="${id}"] .post-media`);
-      if (el) el.innerHTML = data.media_type && data.media_type.startsWith("video")
-        ? `<video src="${data.media}" controls playsinline></video>`
-        : `<img src="${data.media}" alt="">`;
-    }
+// ---- Post media: cached and filled after each render (fixes empty boxes from the old lazy-load race) ----
+const MEDIA_CACHE = {};
+function mediaInner(m){
+  if (!m || !m.media) return "";
+  return m.media_type && m.media_type.startsWith("video")
+    ? `<video src="${m.media}" controls playsinline></video>`
+    : `<img src="${m.media}" alt="">`;
+}
+function mediaHtml(id, p){
+  if (!(p.mediaType || p.media)) return "";
+  const m = MEDIA_CACHE[id] || (p.media ? { media: p.media, media_type: p.mediaType } : null);
+  return `<div class="post-media">${mediaInner(m)}</div>`;
+}
+async function fillMedia(posts){
+  if (!sb) return;
+  const need = posts.filter(p => (p.mediaType || p.media) && !MEDIA_CACHE[p.id]).map(p => p.id);
+  if (need.length) {
+    const { data, error } = await sb.from("posts").select("id,media,media_type").in("id", need);
+    if (error) { console.error(error); return; }
+    (data || []).forEach(r => { if (r.media) MEDIA_CACHE[r.id] = { media: r.media, media_type: r.media_type }; });
   }
+  posts.forEach(p => {
+    const m = MEDIA_CACHE[p.id]; if (!m) return;
+    const el = document.querySelector(`#feed [data-post="${CSS.escape(p.id)}"] .post-media`);
+    if (el && !el.firstElementChild) el.innerHTML = mediaInner(m);
+  });
+}
+
+// ---- Replies tab: comments/replies by the owner and the Bots, newest first ----
+function isOwnerOrBotHandle(c){
+  const h = String(c.h || c.handle || "").toLowerCase();
+  return h === "johnnyskyride" || !!c.bot || isBot({ name: c.n || c.name, handle: c.h || c.handle });
+}
+async function loadReplyEntries(posts){
+  const entries = [];
+  const postMap = {}; posts.forEach(p => postMap[p.id] = p);
+  const pc = await loadComments();
+  Object.entries(pc).forEach(([pid, cs]) => {
+    const byId = {}; cs.forEach(c => byId[c.id] = c);
+    cs.forEach(c => CMT.post[c.id] = Object.assign({}, c, { kind: "post", ownerId: pid }));
+    cs.forEach(c => {
+      if (!isOwnerOrBotHandle(c)) return;
+      const parent = c.parent && byId[c.parent];
+      const p = postMap[pid];
+      entries.push({ kind: "post", ownerId: pid, c, ts: c.ts || 0, replyCount: cs.filter(x => x.parent === c.id).length,
+        to: parent ? parent.h : (p ? p.handle : ""), ctxTitle: p ? (p.author || "") : "", ctxHandle: p ? p.handle : "", ctxText: p ? String(p.t || "").split("\n---embed---\n")[0] : "", ctxBot: p ? p.bot : false, onComment: !!parent });
+    });
+  });
+  if (sb) {
+    const [{ data: ac }, arts] = await Promise.all([
+      sb.from("article_comments").select("id,article_id,parent_id,likes,name,handle,avatar,body,bot,created_at").order("created_at", { ascending: true }),
+      loadArticles()
+    ]);
+    const artMap = {}; (arts || []).forEach(a => artMap[a.id] = a);
+    const rows = (ac || []).map(r => ({ id: r.id, aid: r.article_id, parent: r.parent_id || null, likes: r.likes || 0, n: r.name || r.handle, h: r.handle, t: r.body, avatar: r.avatar, bot: r.bot, ts: new Date(r.created_at).getTime(), d: new Date(r.created_at).toLocaleString() }));
+    const byId = {}; rows.forEach(c => { byId[c.id] = c; CMT.article[c.id] = Object.assign({}, c, { kind: "article", ownerId: c.aid }); });
+    rows.forEach(c => {
+      if (!isOwnerOrBotHandle(c)) return;
+      const parent = c.parent && byId[c.parent];
+      const a = artMap[c.aid];
+      entries.push({ kind: "article", ownerId: c.aid, c, ts: c.ts, replyCount: rows.filter(x => x.parent === c.id).length,
+        to: parent ? parent.h : "", ctxTitle: a ? a.title : "Article", ctxHandle: "", ctxText: "", ctxBot: false, onComment: !!parent, isArticle: true });
+    });
+  }
+  entries.sort((x, y) => (y.ts || 0) - (x.ts || 0));
+  return entries;
+}
+function replyEntryHtml(e){
+  const c = e.c, kind = e.kind;
+  const liked = MY_CLIKES.has(ckey(kind, c.id));
+  const attrs = `data-kind="${kind}" data-cid="${escapeHtml(c.id)}"`;
+  const go = `data-kind="${kind}" data-oid="${escapeHtml(e.ownerId)}" data-cid="${escapeHtml(c.id)}" onclick="openReplySource(this.dataset.kind,this.dataset.oid,this.dataset.cid)"`;
+  const ctxLine = e.to
+    ? `Replying to <span class="mention">@${escapeHtml(e.to)}</span>${e.isArticle ? ` on <b>${escapeHtml(e.ctxTitle)}</b>` : ""}`
+    : (e.isArticle ? `Comment on article <b>${escapeHtml(e.ctxTitle)}</b>` : "");
+  const preview = e.isArticle
+    ? `<div class="embed reply-ctx" ${go}><div class="who"><span>Article</span></div><div><b>${escapeHtml(e.ctxTitle)}</b></div></div>`
+    : `<div class="embed reply-ctx" ${go}><div class="who"><b>${escapeHtml(e.ctxTitle)}</b>${commentStar({ h: e.ctxHandle, bot: e.ctxBot })} <span>@${escapeHtml(e.ctxHandle)}</span></div><div>${linkMentions(e.ctxText.length > 140 ? e.ctxText.slice(0, 140) + "…" : e.ctxText)}</div></div>`;
+  const av = c.avatar || (String(c.h).toLowerCase() === "johnnyskyride" && OWNER_AV) || AV;
+  return `<article class="post reply-entry" data-reply="${escapeHtml(c.id)}">
+    <img class="av" src="${av}" alt="">
+    <div style="flex:1;min-width:0">
+      <div class="who"><b>${escapeHtml(c.n)}</b>${commentStar(c)} <span>@${escapeHtml(c.h)} · ${escapeHtml(c.d || "")}</span></div>
+      ${ctxLine ? `<div class="reply-to" ${go}>${ctxLine}</div>` : ""}
+      <div class="body" ${go} style="cursor:pointer">${linkMentions(c.t || "")}</div>
+      ${c.media && /^https?:|^data:image\//.test(c.media) ? (c.mediaType && c.mediaType.startsWith("video") ? `<div class="post-media"><video src="${c.media}" controls playsinline></video></div>` : `<div class="post-media"><img src="${c.media}" alt=""></div>`) : ""}
+      ${preview}
+      <div class="c-actions">
+        <span ${attrs} onclick="openCommentReply(this.dataset.kind, this.dataset.cid)" title="Reply" aria-label="Reply">💬 ${e.replyCount || ""}</span>
+        <span class="starred-only" ${attrs} onclick="openRepostComment(this.dataset.kind, this.dataset.cid)" title="Repost or quote" aria-label="Repost or quote">↻</span>
+        <span class="c-heart${liked ? " liked" : ""}" ${attrs} onclick="toggleCommentLike(this.dataset.kind, this.dataset.cid)" title="Heart" aria-label="Heart">${liked ? "♥" : "♡"} <i>${c.likes || ""}</i></span>
+      </div>
+      <div class="c-reply-slot" id="crs-${kind}-${domKey(c.id)}"></div>
+    </div>
+  </article>`;
+}
+async function openReplySource(kind, ownerId, cid){
+  // open every collapsed ancestor so the comment is visible, then go to the post/article and highlight it
+  let cur = CMT[kind][cid];
+  while (cur && cur.parent) { openThreads.add(ckey(kind, cur.parent)); cur = CMT[kind][cur.parent]; }
+  if (kind === "post" && currentTab !== "posts") {
+    currentTab = "posts"; feedPage = 0;
+    document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === "posts"));
+  }
+  await openEmbedSource(kind === "article" ? "article" : "post", ownerId);
+  await new Promise(r => setTimeout(r, 400));
+  const scope = kind === "article" ? document.getElementById("art-comments") : document.querySelector(`#feed [data-post="${CSS.escape(ownerId)}"]`);
+  const hit = scope && scope.querySelector(`.c-heart[data-cid="${CSS.escape(cid)}"]`);
+  const el = hit && hit.closest(".comment");
+  if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.add("c-flash"); setTimeout(() => el.classList.remove("c-flash"), 1800); }
 }
 </script>
 
