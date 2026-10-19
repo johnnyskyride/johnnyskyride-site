@@ -1,0 +1,46 @@
+# Rebuilds the share preview pages (/p/, /c/, /ac/ + /share/ images) from Supabase's public data.
+# Runs every 5 minutes (GitHub may delay scheduled runs), on demand (Actions tab > Run workflow),
+# and on a repository_dispatch "share-pages" event, so a webhook can trigger it instantly later.
+# Uses only the site's public (publishable) Supabase key, read from index.html: no secrets needed.
+name: share-pages
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+  repository_dispatch:
+    types: [share-pages]
+  push:
+    branches: [main]
+    paths: ["tools/build-shares.py", "tools/fonts/**", ".github/workflows/share-pages.yml"]
+permissions:
+  contents: write
+concurrency:
+  group: share-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Pillow, fontTools and the emoji font
+        run: |
+          pip install --quiet "pillow>=11,<13" "fonttools>=4.50"
+          if [ ! -f /usr/share/fonts/truetype/noto/NotoColorEmoji.ttf ]; then
+            sudo apt-get install -y -qq --no-install-recommends fonts-noto-color-emoji >/dev/null 2>&1 || \
+              (sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends fonts-noto-color-emoji >/dev/null)
+          fi
+      - name: Build share pages
+        run: python3 tools/build-shares.py
+      - name: Commit changes
+        run: |
+          git add -A
+          if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -q -m "share pages: update previews"
+          for i in 1 2 3; do git pull -q --rebase origin main && git push -q origin HEAD:main && exit 0; sleep 5; done
+          exit 1
