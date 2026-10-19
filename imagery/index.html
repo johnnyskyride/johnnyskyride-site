@@ -397,6 +397,24 @@
   .art-card .meta { color:#71767b; font-size:13px; }
   .art-cover { width:100%; max-height:280px; object-fit:cover; border-radius:12px; margin:10px 0; }
   .art-read { padding:16px; }
+
+  .art-actions { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; align-items:center; }
+  .art-draft-msg { color:#71767b; font-size:13px; flex-basis:100%; min-height:16px; }
+  .art-drafts { border-bottom:1px solid #2f3336; flex-direction:column; }
+  body.owner .art-drafts.has-drafts { display:flex !important; }
+  body:not(.owner) .art-drafts, body.owner .art-drafts:not(.has-drafts), body.owner #art-del-draft.off, body.owner #new-article.off { display:none !important; }
+  .art-drafts summary { cursor:pointer; padding:12px 16px; font-weight:800; list-style:none; display:flex; align-items:center; gap:8px; }
+  .art-drafts summary::-webkit-details-marker { display:none; }
+  .art-drafts summary::before { content:"▸"; color:#71767b; transition:transform .15s; }
+  .art-drafts details[open] summary::before { transform:rotate(90deg); }
+  .art-drafts summary .n { color:#71767b; font-weight:400; }
+  .draft-row { display:flex; align-items:center; gap:10px; padding:10px 16px; border-top:1px solid #16181c; }
+  .draft-row .dt { flex:1; min-width:0; cursor:pointer; }
+  .draft-row .dt b { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .draft-row .dt span { color:#71767b; font-size:13px; }
+  .draft-row button { background:transparent; border:1px solid #2f3336; color:#e7e9ea; border-radius:999px; padding:6px 12px; font-weight:700; cursor:pointer; flex:0 0 auto; }
+  .draft-row button.del { color:#71767b; }
+  .draft-badge { display:inline-block; font-size:12px; font-weight:700; color:#111; background:#ffd400; border-radius:999px; padding:2px 8px; margin-left:8px; vertical-align:middle; }
   .art-read h1 { font-size:28px; margin:8px 0; }
   .art-read .body { font-size:17px; line-height:1.6; }
 
@@ -528,12 +546,12 @@
         <div class="pbio">///🌟 ADDk—
 no one × nothing × nuh uh</div>
         <div class="pmeta">
-          <a href="https://x.com/johnnyskyride" target="_blank">X</a>
           <a href="https://open.spotify.com/artist/0L3xQ2NwcvfRK3g2CmuKS7" target="_blank">Spotify</a>
-          <a href="https://www.youtube.com/@johnnyskyride" target="_blank">YouTube</a>
+          <a href="https://music.youtube.com/channel/UCifzl4OcoFqFoUE2bItGbAQ" target="_blank">YouTube Music</a>
           <a href="https://www.tiktok.com/@johnnyskyride" target="_blank">TikTok</a>
+          <a href="https://x.com/johnnyskyride" target="_blank">X</a>
           <a href="https://www.mallow.art/u/johnnyskyride?tab=pinned" target="_blank">Mallow</a>
-          <a href="https://johnnyskyride.itch.io/skyforge" target="_blank">SkyForge</a>
+          <a href="https://johnnyskyride.itch.io" target="_blank">Itch.io</a>
         </div>
         <div class="counts"><div><b>4</b> <span>Solo singles</span></div></div>
       </div>
@@ -559,6 +577,7 @@ no one × nothing × nuh uh</div>
     <!-- ARTICLES -->
     <section class="page" id="articles">
       <div class="topbar">Articles</div>
+      <div id="article-drafts" class="art-drafts owner-only owner-strict"></div>
       <div id="article-list"></div>
       <div id="article-editor" style="display:none;padding:16px">
         <input id="art-title" placeholder="Title" style="width:100%;background:#000;border:0;border-bottom:1px solid #2f3336;color:#e7e9ea;font-size:28px;font-weight:800;padding:12px 0;outline:none;margin-bottom:8px">
@@ -574,9 +593,12 @@ no one × nothing × nuh uh</div>
           <button type="button" class="tool" data-cmd="link">🔗</button>
         </div>
         <div id="art-body" contenteditable="true" style="min-height:280px;border:1px solid #2f3336;border-radius:12px;padding:14px;outline:none;font-size:17px;line-height:1.5" data-placeholder="Start writing…"></div>
-        <div style="display:flex;gap:10px;margin-top:14px">
+        <div class="art-actions">
           <button onclick="publishArticle()" style="background:#ff6bb5;color:#111;border:0;border-radius:999px;padding:10px 18px;font-weight:800;cursor:pointer">Publish</button>
+          <button id="art-save-draft" class="owner-only owner-strict" onclick="saveArticleDraft()" style="background:transparent;color:#e7e9ea;border:1px solid #536471;border-radius:999px;padding:10px 18px;font-weight:700;cursor:pointer">Save draft</button>
           <button onclick="cancelArticle()" style="background:transparent;color:#e7e9ea;border:1px solid #2f3336;border-radius:999px;padding:10px 18px;font-weight:700;cursor:pointer">Cancel</button>
+          <button id="art-del-draft" class="owner-only owner-strict off" onclick="deleteDraft(artDraftId, true)" style="margin-left:auto;background:transparent;color:#f4212e;border:1px solid #2f3336;border-radius:999px;padding:10px 14px;font-weight:700;cursor:pointer">Delete draft</button>
+          <span id="art-draft-msg" class="art-draft-msg" aria-live="polite"></span>
         </div>
       </div>
       <div style="padding:16px">
@@ -1326,28 +1348,57 @@ function ownerNow(){ return !!(sb && isOwnerSession(currentSession)); }
 
 // ---- Articles (public.articles: anyone reads, owner writes) ----
 let artCoverFile = null;
+let artCoverUrl = null;       // cover already uploaded (when editing a draft)
+let artDraftId = null;        // id of the draft being edited, if any
+let artDirty = false;
+let artSaving = false;
+let artAutosave = null;
 let ARTICLES = [];
-function openEditor(){
+let DRAFTS = [];
+function setDraftMsg(t){ const el = document.getElementById("art-draft-msg"); if (el) el.textContent = t || ""; }
+function syncDraftUi(){
+  const del = document.getElementById("art-del-draft");
+  if (del) del.classList.toggle("off", !artDraftId);
+}
+function openEditor(draft){
   if (!ownerNow()) { alert("Only the owner can write articles."); return; }
   document.getElementById("article-list").style.display = "none";
-  document.getElementById("new-article").style.display = "none";
+  document.getElementById("article-drafts").classList.remove("has-drafts");
+  document.getElementById("new-article").classList.add("off");
   document.getElementById("article-editor").style.display = "block";
-  document.getElementById("art-title").value = "";
-  document.getElementById("art-body").innerHTML = "";
-  document.getElementById("art-cover-prev").innerHTML = "";
+  document.getElementById("art-title").value = draft ? (draft.title || "") : "";
+  document.getElementById("art-body").innerHTML = draft ? (draft.body || "") : "";
   document.getElementById("art-cover").value = "";
   artCoverFile = null;
+  artCoverUrl = draft && draft.cover ? draft.cover : null;
+  document.getElementById("art-cover-prev").innerHTML = artCoverUrl ? '<img src="'+escapeHtml(artCoverUrl)+'" style="width:100%;max-height:220px;object-fit:cover;border-radius:12px">' : "";
+  artDraftId = draft ? draft.id : null;
+  artDirty = false;
+  setDraftMsg(draft ? "Editing draft · last saved " + new Date(draft.updated_at).toLocaleString() : "");
+  syncDraftUi();
+  clearInterval(artAutosave);
+  artAutosave = setInterval(() => { if (artDraftId && artDirty && !artSaving) saveArticleDraft({ auto: true }); }, 30000);
 }
-function cancelArticle(){
+function closeEditor(){
+  clearInterval(artAutosave); artAutosave = null;
+  artDraftId = null; artDirty = false; artCoverUrl = null; artCoverFile = null;
+  setDraftMsg(""); syncDraftUi();
   document.getElementById("article-editor").style.display = "none";
   document.getElementById("article-list").style.display = "block";
-  document.getElementById("new-article").style.display = "inline-block";
+  document.getElementById("new-article").classList.remove("off");
   renderArticles();
 }
+async function cancelArticle(){
+  // keep unsaved edits to an existing draft rather than losing them
+  if (artDraftId && artDirty && ownerNow()) await saveArticleDraft({ auto: true });
+  closeEditor();
+}
+["art-title", "art-body"].forEach(id => document.getElementById(id).addEventListener("input", () => { artDirty = true; }));
 document.querySelectorAll(".tool").forEach(b => b.addEventListener("click", () => {
   const cmd = b.dataset.cmd;
   const ed = document.getElementById("art-body");
   ed.focus();
+  artDirty = true;
   if (cmd === "bold") document.execCommand("bold");
   else if (cmd === "italic") document.execCommand("italic");
   else if (cmd === "underline") document.execCommand("underline");
@@ -1362,40 +1413,114 @@ document.querySelectorAll(".tool").forEach(b => b.addEventListener("click", () =
 document.getElementById("art-cover").addEventListener("change", e => {
   const f = e.target.files[0];
   artCoverFile = f || null;
-  if (!f) { document.getElementById("art-cover-prev").innerHTML = ""; return; }
+  artDirty = true;
+  if (!f) { document.getElementById("art-cover-prev").innerHTML = ""; artCoverUrl = null; return; }
   document.getElementById("art-cover-prev").innerHTML = '<img src="'+URL.createObjectURL(f)+'" style="width:100%;max-height:220px;object-fit:cover;border-radius:12px">';
 });
 async function loadArticles(){
   if (!sb) return ARTICLES;
-  const { data, error } = await sb.from("articles").select("id,title,body,cover,created_at").order("created_at", { ascending: false });
+  // published only: the owner's RLS also returns drafts, which must never reach the public list
+  const { data, error } = await sb.from("articles").select("id,title,body,cover,created_at").eq("status", "published").order("created_at", { ascending: false });
   if (error) { console.error(error); return ARTICLES; }
   ARTICLES = data || [];
   return ARTICLES;
 }
+async function loadDrafts(){
+  if (!sb || !ownerNow()) { DRAFTS = []; return DRAFTS; }
+  const { data, error } = await sb.from("articles").select("id,title,body,cover,updated_at").eq("status", "draft").order("updated_at", { ascending: false });
+  if (error) { console.error(error); return DRAFTS; }
+  DRAFTS = data || [];
+  return DRAFTS;
+}
+async function articleFields(id){
+  const title = document.getElementById("art-title").value.trim();
+  let body = document.getElementById("art-body").innerHTML.trim();
+  let cover = artCoverUrl;
+  if (artCoverFile) {
+    cover = await uploadMedia("articles/" + id + "-cover." + extFor(artCoverFile.type, artCoverFile.name), artCoverFile);
+    artCoverUrl = cover; artCoverFile = null;
+  }
+  body = await inlineImagesToMedia(body, "articles/" + id);
+  return { title, body, cover };
+}
+async function saveArticleDraft(opts = {}){
+  if (!ownerNow()) { if (!opts.auto) alert("Only the owner can save drafts."); return false; }
+  if (artSaving || publishingArticle) return false;
+  const t = document.getElementById("art-title").value.trim();
+  const ed = document.getElementById("art-body");
+  const bodyText = ed.textContent.trim() || (ed.querySelector("img") ? "img" : "");
+  if (!artDraftId && !t && !bodyText) { if (!opts.auto) setDraftMsg("Nothing to save yet."); return false; }
+  artSaving = true;
+  setDraftMsg("Saving…");
+  try {
+    const id = artDraftId || ("a" + Date.now());
+    const f = await articleFields(id);
+    let error;
+    if (artDraftId) ({ error } = await sb.from("articles").update({ ...f, status: "draft" }).eq("id", id).eq("status", "draft"));
+    else ({ error } = await sb.from("articles").insert({ id, ...f, status: "draft" }));
+    if (error) throw error;
+    artDraftId = id; artDirty = false; syncDraftUi();
+    setDraftMsg((opts.auto ? "Autosaved" : "Draft saved") + " · " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }));
+    if (!opts.auto) showToast("Draft saved");
+    return true;
+  } catch (e) {
+    setDraftMsg("Could not save draft: " + (e.message || e));
+    return false;
+  } finally { artSaving = false; }
+}
+async function deleteDraft(id, fromEditor){
+  if (!ownerNow() || !id) return;
+  if (!confirm("Delete this draft? This can't be undone.")) return;
+  const { error } = await sb.from("articles").delete().eq("id", id).eq("status", "draft");
+  if (error) { alert("Could not delete: " + error.message); return; }
+  showToast("Draft deleted");
+  if (fromEditor) { artDirty = false; closeEditor(); } else renderArticles();
+}
+function openDraft(id){
+  const d = DRAFTS.find(x => x.id === id);
+  if (d) openEditor(d);
+}
 let publishingArticle = false;
 async function publishArticle(){
   if (!ownerNow()) { alert("Only the owner can publish articles. Log in as the owner first."); return; }
-  if (publishingArticle) return;
+  if (publishingArticle || artSaving) return;
   const title = document.getElementById("art-title").value.trim();
-  let body = document.getElementById("art-body").innerHTML.trim();
-  if (!title || !body) return alert("Title and body.");
+  const body0 = document.getElementById("art-body").innerHTML.trim();
+  if (!title || !body0) return alert("Title and body.");
   publishingArticle = true;
   try {
-    const id = "a" + Date.now();
-    let cover = null;
-    if (artCoverFile) cover = await uploadMedia("articles/" + id + "-cover." + extFor(artCoverFile.type, artCoverFile.name), artCoverFile);
-    body = await inlineImagesToMedia(body, "articles/" + id);
-    const { error } = await sb.from("articles").insert({ id, title, body, cover });
+    const id = artDraftId || ("a" + Date.now());
+    const f = await articleFields(id);
+    let error;
+    // publishing a draft is a fresh publish: the DB trigger resets created_at/published_at to now
+    if (artDraftId) ({ error } = await sb.from("articles").update({ ...f, status: "published" }).eq("id", id));
+    else ({ error } = await sb.from("articles").insert({ id, ...f }));
     if (error) throw error;
-    cancelArticle();
+    artDirty = false;
+    closeEditor();
   } catch (e) {
     alert("Could not publish: " + (e.message || e));
   } finally { publishingArticle = false; }
 }
+function renderDrafts(){
+  const box = document.getElementById("article-drafts");
+  if (!box) return;
+  const editing = document.getElementById("article-editor").style.display === "block";
+  if (!ownerNow() || !DRAFTS.length || editing) { box.classList.remove("has-drafts"); box.innerHTML = ""; return; }
+  const wasOpen = box.querySelector("details")?.open ?? true;
+  box.innerHTML = `<details ${wasOpen ? "open" : ""}><summary>Drafts <span class="n">(${DRAFTS.length})</span></summary>` +
+    DRAFTS.map(d => `<div class="draft-row">
+      <div class="dt" onclick="openDraft('${d.id}')"><b>${escapeHtml(d.title || "Untitled draft")}</b><span>Edited ${new Date(d.updated_at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span></div>
+      <button onclick="openDraft('${d.id}')">Edit</button>
+      <button class="del" onclick="deleteDraft('${d.id}')" aria-label="Delete draft">Delete</button>
+    </div>`).join("") + `</details>`;
+  box.classList.add("has-drafts");
+}
 async function renderArticles(){
   const box = document.getElementById("article-list");
   if (!box) return;
-  const list = await loadArticles();
+  const [list] = await Promise.all([loadArticles(), loadDrafts()]);
+  renderDrafts();
   if (!list.length) {
     box.innerHTML = '<div style="padding:40px 16px;color:#71767b;text-align:center">No articles yet.</div>';
     return;
@@ -1417,6 +1542,7 @@ async function deleteArticle(id){
 function readArticle(id){
   const a = ARTICLES.find(x => x.id === id);
   if (!a) return renderArticles();
+  document.getElementById("article-drafts").classList.remove("has-drafts");
   document.getElementById("article-list").innerHTML = `
     <div class="art-read">
       <button onclick="renderArticles()" style="background:none;border:0;color:#ff6bb5;cursor:pointer;font-weight:700">← Articles</button>
@@ -1492,8 +1618,16 @@ function isOwnerSession(session){
   const e = session && session.user && session.user.email;
   return !!e && e.toLowerCase() === OWNER_EMAIL.toLowerCase();
 }
+let lastOwnerState = null;
 function setOwner(on){
   document.body.classList.toggle("owner", on);
+  // owner sign-in/out changes what Articles shows (Drafts list)
+  if (lastOwnerState !== null && lastOwnerState !== !!on) setTimeout(() => {
+    const ed = document.getElementById("article-editor");
+    if (ed && ed.style.display === "block" && !on) { clearInterval(artAutosave); closeEditor(); }
+    else if (!ed || ed.style.display !== "block") renderArticles();
+  }, 0);
+  lastOwnerState = !!on;
 }
 async function ownerPrompt(){
   const m = document.getElementById("owner-login");
