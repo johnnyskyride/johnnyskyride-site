@@ -158,7 +158,7 @@ def clusters(s):
     return out
 
 class Run:  # a measured piece of a line
-    __slots__ = ("text", "font", "emoji", "w", "color")
+    __slots__ = ("text", "font", "emoji", "w", "color", "pad")
 def layout(F, segments, size, maxw, color, max_lines):
     """Word-wrap formatted segments. Returns list of lines (each a list of Run), and whether text was cut."""
     tokens = []  # (piece, bold, italic) where piece is a word, a space or "\n"
@@ -221,12 +221,46 @@ def draw_lines(F, canvas, lines, x, y, size, lh, ellipsis_color):
         cx = x
         for r in line:
             if r.emoji is not None:
-                canvas.alpha_composite(r.emoji, (int(cx), int(y + (lh - r.emoji.height) / 2 + size * 0.04)))
+                pad = getattr(r, "pad", 0) or 0
+                canvas.alpha_composite(r.emoji, (int(cx + pad), int(y + (lh - r.emoji.height) / 2 + size * 0.04)))
             else:
                 d.text((cx, y + (lh - size) / 2 - size * 0.06), r.text, font=r.font, fill=r.color)
             cx += r.w
         y += lh
     return y
+
+# Verified stars, same shape/colours as the site's <svg class="star"> (viewBox 0 0 24 24)
+STAR_PTS = [(12, 2), (14.9, 8.9), (22.3, 9.5), (16.7, 14.3), (18.4, 21.5), (12, 17.8), (5.6, 21.5), (7.3, 14.3), (1.7, 9.5), (9.1, 8.9)]
+STAR_COLORS = {"gold": (0xF5, 0xC5, 0x18, 255), "silver": (0xC0, 0xC0, 0xC0, 255)}
+_star_cache = {}
+def star_img(kind, px):
+    k = (kind, px)
+    if k not in _star_cache:
+        ss = 8; S = px * ss
+        im = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+        ImageDraw.Draw(im).polygon([(x / 24 * S, y / 24 * S) for x, y in STAR_PTS], fill=STAR_COLORS[kind])
+        _star_cache[k] = im.resize((px, px), Image.LANCZOS)
+    return _star_cache[k]
+def star_run(kind, size, gap_before=True):
+    r = Run(); img = star_img(kind, max(8, round(size * 0.82)))
+    r.text = "★"; r.font = None; r.emoji = img; r.color = None
+    r.w = img.width + (size * 0.28 if gap_before else 0) + size * 0.12
+    r.pad = size * 0.28 if gap_before else 0
+    return r
+def text_runs(F, text, size, color, bold=False):
+    lines, _ = layout(F, [(text, bold, False)], size, 10_000, color, 1)
+    return lines[0] if lines else []
+def fit_line(runs, maxw, F, size):
+    """Trim a single line of runs to maxw, adding an ellipsis."""
+    if sum(r.w for r in runs) <= maxw: return runs
+    out = list(runs)
+    e = Run(); e.text = "…"; e.font = F.font(F.chains[(False, False)][0], size); e.emoji = None; e.color = MUTED; e.w = e.font.getlength("…")
+    while out and sum(r.w for r in out) + e.w > maxw:
+        last = out[-1]
+        if last.emoji is None and len(last.text) > 1:
+            nr = Run(); nr.text = last.text[:-1]; nr.font = last.font; nr.emoji = None; nr.color = last.color; nr.w = nr.font.getlength(nr.text); out[-1] = nr
+        else: out.pop()
+    return out + [e]
 
 def circle(img, d):
     img = ImageOps.fit(img.convert("RGB"), (d * 3, d * 3), Image.LANCZOS)
@@ -254,11 +288,13 @@ def render_card(F, item, avatar_img):
     else: im.alpha_composite(initials_avatar(F, item["name"], av), (pad, pad))
     # name + handle
     nx = pad + av + 24
-    lines, _ = layout(F, [(item["name"], True, False)], 38, W - nx - pad, TEXT, 1)
-    draw_lines(F, im, lines, nx, pad + 2, 38, 48, MUTED)
+    st = star_run(item["star"], 38) if item.get("star") else None
+    name_runs = fit_line(text_runs(F, item["name"], 38, TEXT, True), W - nx - pad - (st.w if st else 0), F, 38)
+    draw_lines(F, im, [name_runs + ([st] if st else [])], nx, pad + 2, 38, 48, MUTED)
     sub = "@" + item["handle"] + ("  ·  " + item["context"] if item.get("context") else "")
-    lines, _ = layout(F, [(oneline(sub, 80), False, False)], 26, W - nx - pad, MUTED, 1)
-    draw_lines(F, im, lines, nx, pad + 52, 26, 34, MUTED)
+    cst = star_run(item["context_star"], 26) if item.get("context") and item.get("context_star") else None
+    sub_runs = fit_line(text_runs(F, oneline(sub, 80), 26, MUTED), W - nx - pad - (cst.w if cst else 0), F, 26)
+    draw_lines(F, im, [sub_runs + ([cst] if cst else [])], nx, pad + 52, 26, 34, MUTED)
     # body text: largest size that fits
     top, bottom = pad + av + 34, H - pad - 44
     q = item.get("quote_obj")
@@ -280,9 +316,9 @@ def render_card(F, item, avatar_img):
     if q:  # quoted post, drawn like the site's embed box
         qy0, qy1 = bottom + 16, bottom + 136
         d.rounded_rectangle((pad, qy0, W - pad, qy1), radius=18, outline=BORDER, width=2, fill=(16, 18, 21, 255))
-        hl, _ = layout(F, [(q["name"], True, False), ("  @" + q["handle"], False, False)], 24, W - 2 * pad - 48, TEXT, 1)
-        for r in hl[0][1:] if hl else []: r.color = MUTED
-        draw_lines(F, im, hl, pad + 24, qy0 + 14, 24, 32, MUTED)
+        qst = star_run(q["star"], 24) if q.get("star") else None
+        head = text_runs(F, q["name"], 24, TEXT, True) + ([qst] if qst else []) + text_runs(F, ("  " if not qst else " ") + "@" + q["handle"], 24, MUTED)
+        draw_lines(F, im, [fit_line(head, W - 2 * pad - 48, F, 24)], pad + 24, qy0 + 14, 24, 32, MUTED)
         ql, qcut = layout(F, fmt_segments(q["text"]), 28, W - 2 * pad - 48, TEXT, 2)
         if qcut and ql:
             e = Run(); e.text = "…"; e.font = F.font(F.chains[(False, False)][0], 28); e.emoji = None; e.color = MUTED; e.w = e.font.getlength("…")
@@ -357,8 +393,8 @@ def main():
     global SB
     SB = sb_config()
     posts = rest("posts", "id,author,handle,avatar,body,media,media_type,bot,created_at")
-    comments = rest("comments", "id,post_id,parent_id,name,handle,avatar,body,media,media_type,created_at")
-    acomments = rest("article_comments", "id,article_id,parent_id,name,handle,avatar,body,created_at")
+    comments = rest("comments", "id,post_id,parent_id,name,handle,avatar,body,media,media_type,bot,created_at")
+    acomments = rest("article_comments", "id,article_id,parent_id,name,handle,avatar,body,bot,created_at")
     articles = rest("articles", "id,title", order="id.asc")
     members = rest("members", "handle,name,avatar,bot", order="handle.asc")
     settings = {r["key"]: r["value"] for r in rest("site_settings", "key,value", order="key.asc")}
@@ -376,6 +412,23 @@ def main():
     acm_by_id = {c["id"]: c for c in acomments}
     art_by_id = {a["id"]: a for a in articles}
 
+    # Same rules as the site (index.html): posts -> silver if bot else gold (feed renderer);
+    # comments -> commentStar(): gold for @johnnyskyride, silver for bot rows or BOTS names, else none;
+    # quoted posts (embeds) -> silver if embed.bot, gold for @johnnyskyride, else none.
+    BOTS = ["sukozu", "letty the lead", "6-string", "4-funk", "drummond"]
+    def is_bot_name(name, handle):
+        n, h = (name or "").lower().strip(), (handle or "").lower().strip()
+        return any(n == b or h == b or b in n or b in h for b in BOTS)
+    def post_star(p): return "silver" if p.get("bot") else "gold"
+    def comment_star(c):
+        if (c.get("handle") or "").lower() == OWNER_HANDLE: return "gold"
+        if c.get("bot") or is_bot_name(c.get("name"), c.get("handle")): return "silver"
+        return None
+    def embed_star(e):
+        if e.get("bot"): return "silver"
+        if (e.get("handle") or "").lower() == OWNER_HANDLE: return "gold"
+        return None
+
     def avatar_src(handle, own):
         if handle and handle.lower() == OWNER_HANDLE: return own or owner_avatar
         m = mem.get((handle or "").lower())
@@ -386,11 +439,12 @@ def main():
         text, emb = split_embed(p.get("body"))
         if emb and not text.strip(): text = emb.get("body", "") or ""
         quote_obj = {"name": emb.get("author") or emb.get("handle") or "", "handle": emb.get("handle") or "",
-                     "text": split_embed(emb.get("body", ""))[0].strip()} if emb and text.strip() else None
+                     "text": split_embed(emb.get("body", ""))[0].strip(), "star": embed_star(emb)} if emb and text.strip() else None
         quote = f'quoting @{emb.get("handle","")}: “{oneline(strip_fmt(split_embed(emb.get("body",""))[0]), 90)}”' if emb else ""
         items.append(dict(kind="post", id=p["id"], name=p.get("author") or p.get("handle") or "", handle=p.get("handle") or "",
                           avatar=avatar_src(p.get("handle"), p.get("avatar")), text=text, quote=quote, created=p["created_at"],
-                          media=p.get("media"), media_type=p.get("media_type") or "", target=f"/#post-{p['id']}", context="", tag="Post", quote_obj=quote_obj))
+                          media=p.get("media"), media_type=p.get("media_type") or "", target=f"/#post-{p['id']}", context="", tag="Post", quote_obj=quote_obj,
+                          star=post_star(p), context_star=None))
     for c in comments:
         post = post_by_id.get(c.get("post_id"))
         if not post: continue
@@ -399,7 +453,8 @@ def main():
         items.append(dict(kind="comment", id=c["id"], name=c.get("name") or c.get("handle") or "", handle=c.get("handle") or "",
                           avatar=avatar_src(c.get("handle"), c.get("avatar")), text=c.get("body") or "", quote="", created=c["created_at"],
                           media=c.get("media"), media_type=c.get("media_type") or "", target=f"/#c-{c['id']}",
-                          context=f"replying to @{to}" if to else "", tag="Reply" if parent else "Comment"))
+                          context=f"replying to @{to}" if to else "", tag="Reply" if parent else "Comment",
+                          star=comment_star(c), context_star=(comment_star(parent) if parent else post_star(post))))
     for c in acomments:
         art = art_by_id.get(c.get("article_id"))
         if not art: continue  # article not public (draft/deleted): never publish
@@ -407,7 +462,8 @@ def main():
         items.append(dict(kind="acomment", id=c["id"], name=c.get("name") or c.get("handle") or "", handle=c.get("handle") or "",
                           avatar=avatar_src(c.get("handle"), c.get("avatar")), text=c.get("body") or "", quote="", created=c["created_at"],
                           media=None, media_type="", target=f"/#ac-{c['id']}",
-                          context=(f"replying to @{parent['handle']}" if parent else f"on “{oneline(art.get('title',''), 40)}”"), tag="Article comment"))
+                          context=(f"replying to @{parent['handle']}" if parent else f"on “{oneline(art.get('title',''), 40)}”"), tag="Article comment",
+                          star=comment_star(c), context_star=(comment_star(parent) if parent else None)))
 
     F = Fonts()
     os.makedirs(SHARE, exist_ok=True)
@@ -436,7 +492,7 @@ def main():
         it["video"] = is_video
         sig = hashlib.sha256(json.dumps([it["name"], it["handle"], it["text"], it["quote"], it["context"], it["tag"],
                                          hashlib.sha256((it["avatar"] or "").encode()).hexdigest(),
-                                         hashlib.sha256((it["media"] or "").encode()).hexdigest() if is_img else "", it.get("quote_obj"), is_video, 4]).encode()).hexdigest()[:16]
+                                         hashlib.sha256((it["media"] or "").encode()).hexdigest() if is_img else "", it.get("quote_obj"), is_video, it.get("star"), it.get("context_star"), 5]).encode()).hexdigest()[:16]
         prev = old["items"].get(key)
         img_name = None
         if prev and prev.get("sig") == sig and not FORCE and os.path.exists(os.path.join(SHARE, prev["image"])) and os.path.exists(os.path.join(ROOT, key, "index.html")):

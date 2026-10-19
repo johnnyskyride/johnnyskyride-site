@@ -1886,14 +1886,17 @@ async function finishMemberLogin(session){
   if (pending) user = { name: pending.name, handle: pending.handle, email, bio: pending.bio || "", avatar: pending.avatar || "" };
   else {
     let row = null;
-    const r1 = await sb.from("members").select("*").eq("email", email);
+    // members.email is hidden from the public; my_members() returns the signed-in user's own row(s)
+    const r1 = await sb.rpc("my_members");
     let rows = (!r1.error && r1.data) ? r1.data : [];
     if (botH) rows = rows.filter(m => (m.handle||"").toLowerCase() === botH);
     if (rows.length >= 1) row = rows.find(m => saved && (m.handle||"").toLowerCase() === String(saved.handle||"").toLowerCase()) || rows[0];
     localStorage.removeItem("jsr-pending-bot");
     if (!row && !botH && saved && saved.handle) {
-      const r2 = await sb.from("members").select("*").eq("handle", saved.handle).maybeSingle();
-      if (r2.data && (!r2.data.email || r2.data.email.toLowerCase() === email)) row = r2.data;
+      // unclaimed (no email) or already this user's
+      const r2 = await sb.rpc("member_claimable", { h: saved.handle });
+      const c = (!r2.error && r2.data && r2.data[0]) || null;
+      if (c && (!c.email || c.email.toLowerCase() === email)) row = c;
     }
     if (row) user = { name: row.name, handle: row.handle, email, bio: row.bio || "", avatar: row.avatar || "" };
   }
@@ -1918,14 +1921,20 @@ async function finishMemberLogin(session){
   else members.push(user);
   localStorage.setItem("jsr-members", JSON.stringify(members));
   if (pending) {
-    const { error: upErr } = await sb.from("members").upsert({
+    const prof = {
       handle: user.handle,
       name: user.name,
       email: user.email || null,
       bio: user.bio || null,
       avatar: user.avatar || null,
       bot: !!user.bot
-    });
+    };
+    // insert, or update an existing row (upsert would need read access to the hidden email column)
+    let { error: upErr } = await sb.from("members").insert(prof);
+    if (upErr && upErr.code === "23505") {
+      const r = await sb.from("members").update(prof).eq("handle", prof.handle).select("handle");
+      upErr = r.error || ((r.data && r.data.length) ? null : { message: "That handle belongs to someone else." });
+    }
     if (upErr) alert("Could not save to shared list: " + upErr.message);
     localStorage.removeItem("jsr-pending-profile");
   }
@@ -1936,7 +1945,7 @@ async function openMember(handle){
   let members = JSON.parse(localStorage.getItem("jsr-members")||"[]");
   let m = members.find(x => x.handle === handle);
   if (!m) {
-    const { data } = await sb.from("members").select("*").eq("handle", handle).maybeSingle();
+    const { data } = await sb.from("members").select("handle,name,bio,avatar").eq("handle", handle).maybeSingle();
     if (data) m = { name: data.name, handle: data.handle, bio: data.bio, avatar: data.avatar };
   }
   if (!m) return;
@@ -2277,10 +2286,10 @@ async function doRepost(quote){
 
 async function updateMemberCounts(){
   if (!sb) return;
-  const { data, error } = await sb.from("members").select("bot,email");
+  const { data, error } = await sb.from("members").select("bot,has_email");
   if (error || !data) return;
   const total = data.length;
-  const active = data.filter(m => m.bot || m.email).length;
+  const active = data.filter(m => m.bot || m.has_email).length;
   const ac = document.getElementById("active-count");
   const tc = document.getElementById("total-count");
   if (ac) ac.textContent = active + " active";
@@ -2291,7 +2300,7 @@ async function renderMembers(){
   const box = document.getElementById("member-list");
   if (!box) return;
   if (!sb) { box.innerHTML = '<div style="color:#71767b">Shared list unavailable.</div>'; return; }
-  const { data, error } = await sb.from("members").select("*");
+  const { data, error } = await sb.from("members").select("handle,name,bio,avatar,bot,created_at");
   if (error) { box.innerHTML = '<div style="color:#71767b">Could not load members.</div>'; return; }
   if (!data || !data.length) { box.innerHTML = '<div style="color:#71767b">No members yet.</div>'; return; }
   data.sort((a,b) => (b.bot?1:0) - (a.bot?1:0) || new Date(b.created_at) - new Date(a.created_at));
