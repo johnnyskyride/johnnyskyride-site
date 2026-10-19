@@ -2219,7 +2219,7 @@ async function openEmbedSource(kind, id){
   if (kind === "article") {
     show("articles");
     await renderArticles();
-    if (ARTICLES.some(a => a.id === id)) readArticle(id); else alert("That article is no longer available.");
+    if (ARTICLES.some(a => a.id === id)) readArticle(id); else showToast("That article is no longer available.");
     return;
   }
   show("home");
@@ -2227,7 +2227,7 @@ async function openEmbedSource(kind, id){
   if (!find()) {
     const posts = await loadPosts();
     const idx = posts.findIndex(p => p.id === id);
-    if (idx < 0) { alert("That post is no longer available."); return; }
+    if (idx < 0) { showToast("That post is no longer available."); return; }
     feedPage = Math.floor(idx / PAGE_SIZE);
     await renderFeed();
   }
