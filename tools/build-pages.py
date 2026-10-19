@@ -19,7 +19,8 @@ What it does:
     section's meta block, <meta name="jsr-start"> set, and that section marked as the
     visible page, so link-preview crawlers (which don't run JS) see the right tags,
     and direct loads of /music/ etc. open the right section.
-  * Writes 404.html, which forwards unknown paths to the matching section or home.
+  * Writes 404.html, which forwards unknown paths to the matching section or home, and share
+    links (/p/, /c/, /ac/) that tools/build-shares.py hasn't built yet straight to the item.
 All asset/script paths in index.html must be root-absolute (/assets/...), because the
 same HTML is served from sub-directories.
 """
@@ -82,7 +83,11 @@ NOT_FOUND = """<!DOCTYPE html>
 <script>
 (function(){
   var paths = %s;
-  var seg = (location.pathname.split("/").filter(Boolean)[0] || "").toLowerCase();
+  var parts = location.pathname.split("/").filter(Boolean);
+  var seg = (parts[0] || "").toLowerCase();
+  // share links (/p/<id>/, /c/<id>/, /ac/<id>/) whose stub page isn't built yet: go straight to the item
+  var share = { p: "post-", c: "c-", ac: "ac-" }[seg];
+  if (share && parts[1] && /^[A-Za-z0-9_-]+$/.test(parts[1])) { location.replace("/#" + share + parts[1]); return; }
   var dest = paths.indexOf("/" + seg + "/") >= 0 ? "/" + seg + "/" : "/";
   location.replace(dest + location.search + location.hash);
 })();

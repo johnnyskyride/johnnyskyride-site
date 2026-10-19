@@ -1110,9 +1110,20 @@ function shareLink(url){
   }
 }
 function siteBase(){ return location.origin + "/"; }  // comments/posts live on the home feed
-function sharePost(id){ shareLink(siteBase() + "#post-" + encodeURIComponent(id)); }
+// Share links use the static preview pages built by tools/build-shares.py (/p/<id>/, /c/<id>/, /ac/<id>/),
+// which carry the post's own og/twitter card and forward visitors to the #post-/#c-/#ac- deep link.
+// Until a brand-new item's page is built (the share-pages Action runs every few minutes), 404.html forwards the link.
+const SHARE_ORIGIN = /^(localhost|127\.)/.test(location.hostname) ? location.origin : "https://johnnyskyride.com";
+function shareUrl(prefix, id){ return SHARE_ORIGIN + "/" + prefix + "/" + encodeURIComponent(id) + "/"; }
+function sharePreviewCheck(url){
+  // after sharing: if the preview page isn't live yet, say so (the link itself already works)
+  fetch(url, { method: "HEAD", cache: "no-store" }).then(r => {
+    if (r.status === 404) setTimeout(() => showToast("Preview card is being made, ready in a few minutes"), 1600);
+  }).catch(() => {});
+}
+function sharePost(id){ const u = shareUrl("p", id); shareLink(u); sharePreviewCheck(u); }
 function commentHash(kind, cid){ return (kind === "article" ? "ac-" : "c-") + encodeURIComponent(cid); }
-function shareComment(kind, cid){ shareLink(siteBase() + "#" + commentHash(kind, cid)); }
+function shareComment(kind, cid){ const u = shareUrl(kind === "article" ? "ac" : "c", cid); shareLink(u); sharePreviewCheck(u); }
 // Owner, or the comment's author (same rule as the comments/article_comments delete policies)
 function canDeleteComment(handle){
   if (!sb || !currentSession) return false;

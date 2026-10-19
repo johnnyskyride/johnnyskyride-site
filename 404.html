@@ -6,7 +6,11 @@
 <script>
 (function(){
   var paths = ["/articles/", "/music/", "/imagery/", "/sessions/", "/members/", "/store/"];
-  var seg = (location.pathname.split("/").filter(Boolean)[0] || "").toLowerCase();
+  var parts = location.pathname.split("/").filter(Boolean);
+  var seg = (parts[0] || "").toLowerCase();
+  // share links (/p/<id>/, /c/<id>/, /ac/<id>/) whose stub page isn't built yet: go straight to the item
+  var share = { p: "post-", c: "c-", ac: "ac-" }[seg];
+  if (share && parts[1] && /^[A-Za-z0-9_-]+$/.test(parts[1])) { location.replace("/#" + share + parts[1]); return; }
   var dest = paths.indexOf("/" + seg + "/") >= 0 ? "/" + seg + "/" : "/";
   location.replace(dest + location.search + location.hash);
 })();
