@@ -2235,6 +2235,56 @@ function setSub(name){
   if (b) b.style.display = name === "band" ? "block" : "none";
 }
 document.querySelectorAll(".subtabs button").forEach(b => b.addEventListener("click", () => setSub(b.dataset.sub)));
+// ---- Timed releases (public.releases + private "releases" bucket) ----
+// The DB only returns a release row, and storage only signs its cover/preview, once release_at has passed
+// (RLS), so nothing about an unreleased single is in this page or readable before its time.
+let RELEASES_SHOWN = "";
+async function loadReleases(){
+  if (!sb) return;
+  const { data, error } = await sb.from("releases").select("slug,release_at,section,data").order("release_at", { ascending: false });
+  if (error || !data) return;
+  const live = data.filter(r => new Date(r.release_at).getTime() <= Date.now());   // owner sees future rows; show only live ones
+  const key = live.map(r => r.slug + JSON.stringify(r.data)).join("|");
+  if (!live.length || key === RELEASES_SHOWN) return;
+  const paths = [];
+  live.forEach(r => { if (r.data.cover) paths.push(r.data.cover); if (r.data.preview) paths.push(r.data.preview); });
+  const signed = {};
+  if (paths.length) {
+    const { data: urls } = await sb.storage.from("releases").createSignedUrls(paths, 24 * 3600);
+    (urls || []).forEach(u => { if (u.signedUrl) signed[u.path] = u.signedUrl; });
+  }
+  RELEASES_SHOWN = key;
+  renderReleases(live, p => signed[p] || "");
+}
+function renderReleases(rows, urlFor){
+  rows.slice().reverse().forEach(r => {        // oldest first, each prepended, so the newest ends on top
+    const d = r.data || {}, id = "song-" + r.slug, sub = r.section === "band" ? "band" : "solo";
+    const cover = urlFor(d.cover), preview = urlFor(d.preview);
+    const play = d.spotify ? JSON.stringify(d.spotify) : JSON.stringify(preview ? "local:" + preview : "");
+    const links = (d.links || []).map(l => `<a href="${escapeHtml(l.url)}" target="_blank">${escapeHtml(l.label)}</a>`).join("\n          ");
+    const buy = d.buy_url ? `<a href="${escapeHtml(d.buy_url)}" target="_blank" style="background:#635bff;color:#fff;padding:6px 12px;border-radius:999px;font-weight:800;text-decoration:none;margin-left:8px">Buy ${escapeHtml(d.price || "")}</a>` : "";
+    const html = `<div class="song" id="${escapeHtml(id)}">
+        <div style="color:#71767b;font-size:13px">${escapeHtml(d.meta || "")}</div>
+        <h2>${escapeHtml(d.title)}</h2>
+        ${cover ? `<img decoding="async" class="cov" src="${escapeHtml(cover)}" alt="${escapeHtml(d.title)}">` : ""}
+        ${play !== '""' ? `<button class="play-btn" onclick='playTrack(${escapeHtml(JSON.stringify(d.title))}, ${escapeHtml(play)}, this)'>Play</button>` : ""}
+        <div class="mlinks">
+          ${links}
+          ${buy}</div>
+      </div>`;
+    const old = document.getElementById(id);
+    if (old) old.outerHTML = html;
+    else document.getElementById("sub-" + sub)?.insertAdjacentHTML("afterbegin", html);
+    const side = document.querySelector('aside.right .card a.track[data-release="' + r.slug + '"]');
+    const sideHtml = `<a class="track" href="#" data-release="${escapeHtml(r.slug)}" onclick='${play !== '""' ? `playTrack(${escapeHtml(JSON.stringify(d.title))}, ${escapeHtml(play)}, null);` : ""}openSong(${escapeHtml(JSON.stringify(id))}, "${sub}");return false;'>
+        <img decoding="async" src="${escapeHtml(cover)}" alt="">
+        <div><div class="t">${escapeHtml(d.title)}</div><div class="s">${sub === "band" ? "Johnny & The Bots" : "solo - single"}</div></div>
+      </a>`;
+    if (side) side.outerHTML = sideHtml;
+    else document.querySelector("aside.right .card h3")?.insertAdjacentHTML("afterend", sideHtml);
+  });
+}
+loadReleases(); setInterval(loadReleases, 60 * 1000);
 function openSong(id, sub){
   show("music");
   setSub(sub);
