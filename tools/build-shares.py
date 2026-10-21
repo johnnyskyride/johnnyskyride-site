@@ -467,7 +467,7 @@ def main():
 
     F = Fonts()
     os.makedirs(SHARE, exist_ok=True)
-    new_items, keep_files, avatar_cache = {}, {"manifest.json"}, {}
+    new_items, keep_files, avatar_cache = {}, {"manifest.json", "index.json"}, {}
 
     def load_avatar(src):
         if src in avatar_cache: return avatar_cache[src]
@@ -546,6 +546,9 @@ def main():
     for name in os.listdir(SHARE):
         if name not in keep_files: os.remove(os.path.join(SHARE, name))
     json.dump({"items": dict(sorted(new_items.items()))}, open(man_path, "w"), indent=0, sort_keys=True)
+    # light public index the site reads to add ?v=<card hash> to share links (X caches cards per URL)
+    json.dump({"v": {k: v["sig"][:8] for k, v in sorted(new_items.items())}},
+              open(os.path.join(SHARE, "index.json"), "w"), separators=(",", ":"))
     print(f"share pages: {built} live, {changed} (re)rendered, {removed} removed")
 
 if __name__ == "__main__":

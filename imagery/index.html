@@ -13,8 +13,8 @@
 <meta property="og:url" content="https://johnnyskyride.com/imagery/">
 <meta property="og:title" content="Imagery · ×ＭΛＮ×ｂΞｉｎｇ× — Johnny Skyride">
 <meta property="og:description" content="Imagery — ×ＭΛＮ×ｂΞｉｎｇ× (@johnnyskyride) — ///🌟 ADDk— no one × nothing × nuh uh">
-<meta property="og:image" content="https://johnnyskyride.com/assets/og-imagery.jpg">
-<meta property="og:image:secure_url" content="https://johnnyskyride.com/assets/og-imagery.jpg">
+<meta property="og:image" content="https://johnnyskyride.com/assets/og-imagery.jpg?v=0b11fc5a">
+<meta property="og:image:secure_url" content="https://johnnyskyride.com/assets/og-imagery.jpg?v=0b11fc5a">
 <meta property="og:image:type" content="image/jpeg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -24,7 +24,7 @@
 <meta name="twitter:creator" content="@johnnyskyride">
 <meta name="twitter:title" content="Imagery · ×ＭΛＮ×ｂΞｉｎｇ× — Johnny Skyride">
 <meta name="twitter:description" content="Imagery — ×ＭΛＮ×ｂΞｉｎｇ× (@johnnyskyride) — ///🌟 ADDk— no one × nothing × nuh uh">
-<meta name="twitter:image" content="https://johnnyskyride.com/assets/og-imagery.jpg">
+<meta name="twitter:image" content="https://johnnyskyride.com/assets/og-imagery.jpg?v=0b11fc5a">
 <meta name="twitter:image:alt" content="Imagery — Night drive, Palm, Crouch, Stand, Walk">
 <!-- /jsr:meta -->
 <script type="application/json" id="jsr-pages">
@@ -1114,7 +1114,20 @@ function siteBase(){ return location.origin + "/"; }  // comments/posts live on 
 // which carry the post's own og/twitter card and forward visitors to the #post-/#c-/#ac- deep link.
 // Until a brand-new item's page is built (the share-pages Action runs every few minutes), 404.html forwards the link.
 const SHARE_ORIGIN = /^(localhost|127\.)/.test(location.hostname) ? location.origin : "https://johnnyskyride.com";
-function shareUrl(prefix, id){ return SHARE_ORIGIN + "/" + prefix + "/" + encodeURIComponent(id) + "/"; }
+// X caches a card per exact URL for days, so shared links carry ?v=<card hash> (from /share/index.json,
+// written by tools/build-shares.py) and change whenever the card changes. Unknown items fall back to ?v=<date>.
+let shareIndex = {};
+function loadShareIndex(){
+  return fetch(SHARE_ORIGIN + "/share/index.json?t=" + Date.now(), { cache: "no-store" })
+    .then(r => r.ok ? r.json() : {}).then(j => { shareIndex = (j && j.v) || {}; }).catch(() => {});
+}
+loadShareIndex(); setInterval(loadShareIndex, 5 * 60 * 1000);
+function shareVersion(prefix, id){
+  const h = shareIndex[prefix + "/" + id];
+  if (h) return h;
+  const d = new Date(); return d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0");
+}
+function shareUrl(prefix, id){ return SHARE_ORIGIN + "/" + prefix + "/" + encodeURIComponent(id) + "/?v=" + shareVersion(prefix, id); }
 function sharePreviewCheck(url){
   // after sharing: if the preview page isn't live yet, say so (the link itself already works)
   fetch(url, { method: "HEAD", cache: "no-store" }).then(r => {
