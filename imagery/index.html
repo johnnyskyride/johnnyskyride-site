@@ -398,6 +398,26 @@
   .art-cover { width:100%; max-height:280px; object-fit:cover; border-radius:12px; margin:10px 0; }
   .art-read { padding:16px; }
 
+  .sched-bar { display:none; gap:8px; align-items:center; flex-wrap:wrap; padding:0 16px 12px; color:#71767b; font-size:14px; }
+  .sched-bar.on { display:flex; }
+  .sched-bar input[type=datetime-local], .sched-edit input[type=datetime-local] { background:#000; color:#e7e9ea; border:1px solid #536471; border-radius:8px; padding:6px 8px; color-scheme:dark; font-size:15px; }
+  .sched-bar .x { background:none; border:0; color:#71767b; cursor:pointer; font-size:14px; }
+  .compose-bar .sched-btn { white-space:nowrap; background:transparent; color:var(--accent); border:0; font-weight:700; padding:6px 10px; margin-right:6px; }
+  .sched-list { border-bottom:1px solid #2f3336; }
+  body:not(.owner) .sched-list, .sched-list:empty { display:none !important; }
+  .sched-list summary { cursor:pointer; padding:12px 16px; font-weight:800; list-style:none; }
+  .sched-list summary::-webkit-details-marker { display:none; }
+  .sched-row { padding:10px 16px; border-top:1px solid #16181c; }
+  .sched-row .when { color:#ff6bb5; font-size:13px; font-weight:700; }
+  .sched-row .txt { color:#e7e9ea; margin:4px 0 8px; white-space:pre-wrap; word-break:break-word; max-height:4.5em; overflow:hidden; }
+  .sched-row .acts { display:flex; gap:6px; flex-wrap:wrap; }
+  .sched-row .acts button, .sched-edit button { background:transparent; color:#e7e9ea; border:1px solid #536471; border-radius:999px; padding:5px 12px; font-weight:700; cursor:pointer; font-size:13px; }
+  .sched-row .acts .go { background:#ff6bb5; color:#111; border-color:#ff6bb5; }
+  .sched-row .acts .del { color:#f4212e; border-color:#2f3336; }
+  .sched-edit textarea { width:100%; min-height:80px; background:#000; color:#e7e9ea; border:1px solid #536471; border-radius:10px; padding:8px; font:inherit; margin-bottom:8px; }
+  .sched-edit { display:flex; flex-direction:column; gap:6px; }
+  .art-sched { display:none; gap:8px; align-items:center; flex-wrap:wrap; width:100%; color:#71767b; font-size:14px; }
+  .art-sched.on { display:flex; }
   .art-actions { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; align-items:center; }
   .art-draft-msg { color:#71767b; font-size:13px; flex-basis:100%; min-height:16px; }
   .art-drafts { border-bottom:1px solid #2f3336; flex-direction:column; }
@@ -568,9 +588,17 @@ no one × nothing × nuh uh</div>
         <span class="fmt-btns"><button type="button" class="fmt-btn" data-for="composer" title="Bold (Ctrl+B)" aria-label="Bold" onmousedown="event.preventDefault()" onclick="fmtBtn(this,'**')"><b>B</b></button><button type="button" class="fmt-btn" data-for="composer" title="Italic (Ctrl+I)" aria-label="Italic" onmousedown="event.preventDefault()" onclick="fmtBtn(this,'*')"><i>I</i></button></span>
         <input type="file" id="media-file" accept="image/*,video/*" style="display:none" onchange="previewMedia(this)">
         <button class="media-btn" onclick="document.getElementById('media-file').click()">＋ Photo / Video</button>
+        <button type="button" class="sched-btn owner-only owner-strict" id="sched-toggle" onclick="toggleSchedule()" title="Schedule this post">🕓 Schedule</button>
         <button id="send" disabled onclick="publish()">Post</button>
       </div>
+      <div id="sched-bar" class="sched-bar owner-only owner-strict">
+        <label for="sched-at">Post at</label>
+        <input type="datetime-local" id="sched-at" onchange="syncScheduleBtn()" oninput="syncScheduleBtn()">
+        <span>Central Time</span>
+        <button type="button" class="x" onclick="toggleSchedule(false)">✕ Don't schedule</button>
+      </div>
       <div id="media-preview" class="media-preview owner-only"></div>
+      <div id="sched-list" class="sched-list owner-only owner-strict"></div>
       <div id="feed"></div>
     </section>
 
@@ -596,9 +624,16 @@ no one × nothing × nuh uh</div>
         <div class="art-actions">
           <button onclick="publishArticle()" style="background:#ff6bb5;color:#111;border:0;border-radius:999px;padding:10px 18px;font-weight:800;cursor:pointer">Publish</button>
           <button id="art-save-draft" class="owner-only owner-strict" onclick="saveArticleDraft()" style="background:transparent;color:#e7e9ea;border:1px solid #536471;border-radius:999px;padding:10px 18px;font-weight:700;cursor:pointer">Save draft</button>
+          <button id="art-sched-btn" class="owner-only owner-strict" onclick="toggleArtSchedule()" style="background:transparent;color:#ff6bb5;border:1px solid #ff6bb5;border-radius:999px;padding:10px 18px;font-weight:700;cursor:pointer">🕓 Schedule</button>
           <button onclick="cancelArticle()" style="background:transparent;color:#e7e9ea;border:1px solid #2f3336;border-radius:999px;padding:10px 18px;font-weight:700;cursor:pointer">Cancel</button>
           <button id="art-del-draft" class="owner-only owner-strict off" onclick="deleteDraft(artDraftId, true)" style="margin-left:auto;background:transparent;color:#f4212e;border:1px solid #2f3336;border-radius:999px;padding:10px 14px;font-weight:700;cursor:pointer">Delete draft</button>
           <span id="art-draft-msg" class="art-draft-msg" aria-live="polite"></span>
+          <div id="art-sched" class="art-sched owner-only owner-strict">
+            <label for="art-sched-at">Publish at</label>
+            <input type="datetime-local" id="art-sched-at" style="background:#000;color:#e7e9ea;border:1px solid #536471;border-radius:8px;padding:6px 8px;color-scheme:dark;font-size:15px">
+            <span>Central Time</span>
+            <button type="button" onclick="scheduleArticle()" style="background:#ff6bb5;color:#111;border:0;border-radius:999px;padding:8px 16px;font-weight:800;cursor:pointer">Schedule</button>
+          </div>
         </div>
       </div>
       <div style="padding:16px">
@@ -904,9 +939,13 @@ const AV = "/assets/avatar.jpg";
 
 async function loadPosts(){
   if (!sb) return JSON.parse(localStorage.getItem("jsr-posts-cache")||"[]");
-  const { data, error } = await sb.from("posts").select("id,body,author,handle,avatar,media_type,bot,likes,views,created_at").order("created_at", { ascending: false });
+  const { data, error } = await sb.from("posts").select("id,body,author,handle,avatar,media_type,bot,likes,views,created_at,publish_at").order("created_at", { ascending: false });
   if (error) { console.error(error); return []; }
-  const posts = (data || []).map(r => ({
+  // RLS hides future posts from everyone but the owner; keep them out of the feed and list them as Scheduled
+  const nowMs = Date.now();
+  SCHEDULED = (data || []).filter(r => r.publish_at && new Date(r.publish_at).getTime() > nowMs).reverse();
+  renderScheduled();
+  const posts = (data || []).filter(r => !(r.publish_at && new Date(r.publish_at).getTime() > nowMs)).map(r => ({
     id: r.id, t: r.body, d: new Date(r.created_at).toLocaleString(), ts: new Date(r.created_at).getTime(),
     author: r.author, handle: r.handle, avatar: r.avatar, mediaType: r.media_type, bot: r.bot, likes: r.likes || 0, views: r.views || 0
   }));
@@ -1213,6 +1252,9 @@ async function publish(){
     bot: !!(me && me.bot),
     likes: 0
   };
+  const schedAt = scheduleChosen();
+  if (schedAt === false) return;
+  if (schedAt) post.publish_at = schedAt;
   const { error } = await sb.from("posts").insert(post);
   if (error) { alert("Could not post: " + error.message); return; }
   if (pendingMedia && pendingMedia.file) {
@@ -1231,8 +1273,104 @@ async function publish(){
   const mf = document.getElementById("media-file"); if (mf) mf.value = "";
   refreshSend();
   document.getElementById("send").disabled = true;
+  if (schedAt) { toggleSchedule(false); showToast("Scheduled for " + fmtCentral(schedAt)); }
   renderFeed();
   show("home");
+}
+// ---- Scheduled posts (owner only; the DB hides them from everyone else until publish_at) ----
+let SCHEDULED = [];
+const TZ = "America/Chicago";
+function tzOffsetMs(ms){
+  const p = {}; new Intl.DateTimeFormat("en-US", { timeZone: TZ, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    .formatToParts(new Date(ms)).forEach(x => p[x.type] = x.value);
+  return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second) - ms;
+}
+function centralInputToISO(v){            // "2026-10-22T09:30" in Chicago time -> ISO (UTC)
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(v || ""); if (!m) return null;
+  const wall = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+  let ms = wall - tzOffsetMs(wall); ms = wall - tzOffsetMs(ms);
+  return new Date(ms).toISOString();
+}
+function isoToCentralInput(iso){
+  const ms = new Date(iso).getTime(), d = new Date(ms + tzOffsetMs(ms));
+  return d.toISOString().slice(0, 16);
+}
+function fmtCentral(iso){
+  return new Date(iso).toLocaleString("en-US", { timeZone: TZ, weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + " CT";
+}
+function defaultSchedule(){ return isoToCentralInput(new Date(Math.ceil((Date.now() + 3600e3) / 900e3) * 900e3).toISOString()); }
+function checkScheduleTime(iso){
+  if (!iso) { alert("Pick a date and time."); return false; }
+  if (new Date(iso).getTime() < Date.now() + 120e3) { alert("Pick a time at least 2 minutes from now (Central Time)."); return false; }
+  return true;
+}
+function toggleSchedule(on){
+  const bar = document.getElementById("sched-bar"), inp = document.getElementById("sched-at");
+  on = on === undefined ? !bar.classList.contains("on") : on;
+  bar.classList.toggle("on", on);
+  if (on && !inp.value) inp.value = defaultSchedule();
+  if (!on) inp.value = "";
+  syncScheduleBtn();
+}
+function syncScheduleBtn(){
+  const on = document.getElementById("sched-bar").classList.contains("on") && document.getElementById("sched-at").value;
+  document.getElementById("send").textContent = on ? "Schedule" : "Post";
+}
+function scheduleChosen(){                 // null = post now, ISO = schedule, false = invalid
+  if (!ownerNow() || !document.getElementById("sched-bar").classList.contains("on")) return null;
+  const iso = centralInputToISO(document.getElementById("sched-at").value);
+  return checkScheduleTime(iso) ? iso : false;
+}
+function renderScheduled(){
+  const box = document.getElementById("sched-list");
+  if (!box) return;
+  if (!ownerNow() || !SCHEDULED.length) { box.innerHTML = ""; return; }
+  const wasOpen = box.querySelector("details")?.open ?? true;
+  box.innerHTML = `<details ${wasOpen ? "open" : ""}><summary>🕓 Scheduled posts <span style="color:#71767b;font-weight:400">(${SCHEDULED.length})</span></summary>` +
+    SCHEDULED.map(p => `<div class="sched-row" id="sched-${escapeHtml(p.id)}">
+      <div class="when">${escapeHtml(fmtCentral(p.publish_at))}</div>
+      <div class="txt">${escapeHtml(p.body || (p.media_type ? "[" + p.media_type.split("/")[0] + "]" : ""))}</div>
+      <div class="acts">
+        <button onclick="editScheduled('${p.id}')">Edit</button>
+        <button onclick="editScheduled('${p.id}', true)">Reschedule</button>
+        <button class="go" onclick="publishScheduledNow('${p.id}')">Publish now</button>
+        <button class="del" onclick="cancelScheduled('${p.id}')">Cancel</button>
+      </div></div>`).join("") + `</details>`;
+}
+function editScheduled(id, timeOnly){
+  const p = SCHEDULED.find(x => x.id === id); const row = document.getElementById("sched-" + id);
+  if (!p || !row) return;
+  row.innerHTML = `<div class="sched-edit">
+    ${timeOnly ? "" : `<textarea id="se-body-${id}">${escapeHtml(p.body || "")}</textarea>`}
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:#71767b;font-size:14px">
+      <input type="datetime-local" id="se-at-${id}" value="${isoToCentralInput(p.publish_at)}"> <span>Central Time</span>
+    </div>
+    <div style="display:flex;gap:6px"><button onclick="saveScheduled('${id}', ${!!timeOnly})" style="background:#ff6bb5;color:#111;border-color:#ff6bb5">Save</button><button onclick="renderScheduled()">Cancel</button></div>
+  </div>`;
+}
+async function saveScheduled(id, timeOnly){
+  const iso = centralInputToISO(document.getElementById("se-at-" + id).value);
+  if (!checkScheduleTime(iso)) return;
+  const upd = { publish_at: iso };
+  if (!timeOnly) upd.body = document.getElementById("se-body-" + id).value.trim();
+  const { error } = await sb.from("posts").update(upd).eq("id", id);
+  if (error) { alert("Could not save: " + error.message); return; }
+  showToast("Scheduled for " + fmtCentral(iso));
+  renderFeed();
+}
+async function publishScheduledNow(id){
+  if (!confirm("Publish this post now?")) return;
+  const { error } = await sb.from("posts").update({ publish_at: new Date().toISOString() }).eq("id", id);
+  if (error) { alert("Could not publish: " + error.message); return; }
+  showToast("Published");
+  renderFeed();
+}
+async function cancelScheduled(id){
+  if (!confirm("Cancel this scheduled post? It will be deleted.")) return;
+  const { error } = await sb.from("posts").delete().eq("id", id);
+  if (error) { alert("Could not cancel: " + error.message); return; }
+  showToast("Scheduled post canceled");
+  renderFeed();
 }
 function refreshSend(){
   const t = document.getElementById("composer").value.trim();
@@ -1379,6 +1517,8 @@ let artSaving = false;
 let artAutosave = null;
 let ARTICLES = [];
 let DRAFTS = [];
+let SCHED_ARTS = [];
+let artSchedAt = null;      // publish_at of the scheduled article being edited
 function setDraftMsg(t){ const el = document.getElementById("art-draft-msg"); if (el) el.textContent = t || ""; }
 function syncDraftUi(){
   const del = document.getElementById("art-del-draft");
@@ -1397,7 +1537,11 @@ function openEditor(draft){
   artCoverUrl = draft && draft.cover ? draft.cover : null;
   document.getElementById("art-cover-prev").innerHTML = artCoverUrl ? '<img src="'+escapeHtml(artCoverUrl)+'" style="width:100%;max-height:220px;object-fit:cover;border-radius:12px">' : "";
   artDraftId = draft ? draft.id : null;
+  artSchedAt = draft && draft.status === "scheduled" ? draft.published_at : null;
+  document.getElementById("art-sched").classList.toggle("on", !!artSchedAt);
+  document.getElementById("art-sched-at").value = artSchedAt ? isoToCentralInput(artSchedAt) : "";
   artDirty = false;
+  if (artSchedAt) setDraftMsg("Scheduled for " + fmtCentral(artSchedAt)); else
   setDraftMsg(draft ? "Editing draft · last saved " + new Date(draft.updated_at).toLocaleString() : "");
   syncDraftUi();
   clearInterval(artAutosave);
@@ -1405,7 +1549,8 @@ function openEditor(draft){
 }
 function closeEditor(){
   clearInterval(artAutosave); artAutosave = null;
-  artDraftId = null; artDirty = false; artCoverUrl = null; artCoverFile = null;
+  artDraftId = null; artSchedAt = null; artDirty = false; artCoverUrl = null; artCoverFile = null;
+  document.getElementById("art-sched").classList.remove("on");
   setDraftMsg(""); syncDraftUi();
   document.getElementById("article-editor").style.display = "none";
   document.getElementById("article-list").style.display = "block";
@@ -1414,7 +1559,7 @@ function closeEditor(){
 }
 async function cancelArticle(){
   // keep unsaved edits to an existing draft rather than losing them
-  if (artDraftId && artDirty && ownerNow()) await saveArticleDraft({ auto: true });
+  if (artDraftId && artDirty && ownerNow() && !artSchedAt) await saveArticleDraft({ auto: true });
   closeEditor();
 }
 ["art-title", "art-body"].forEach(id => document.getElementById(id).addEventListener("input", () => { artDirty = true; }));
@@ -1444,13 +1589,15 @@ document.getElementById("art-cover").addEventListener("change", e => {
 async function loadArticles(){
   if (!sb) return ARTICLES;
   // published only: the owner's RLS also returns drafts, which must never reach the public list
-  const { data, error } = await sb.from("articles").select("id,title,body,cover,created_at").eq("status", "published").order("created_at", { ascending: false });
+  const { data, error } = await sb.from("articles").select("id,title,body,cover,created_at").or("status.eq.published,and(status.eq.scheduled,published_at.lte." + new Date().toISOString() + ")").order("created_at", { ascending: false });
   if (error) { console.error(error); return ARTICLES; }
   ARTICLES = data || [];
   return ARTICLES;
 }
 async function loadDrafts(){
-  if (!sb || !ownerNow()) { DRAFTS = []; return DRAFTS; }
+  if (!sb || !ownerNow()) { DRAFTS = []; SCHED_ARTS = []; return DRAFTS; }
+  const sr = await sb.from("articles").select("id,title,body,cover,published_at,updated_at").eq("status", "scheduled").gt("published_at", new Date().toISOString()).order("published_at", { ascending: true });
+  SCHED_ARTS = sr.error ? [] : (sr.data || []);
   const { data, error } = await sb.from("articles").select("id,title,body,cover,updated_at").eq("status", "draft").order("updated_at", { ascending: false });
   if (error) { console.error(error); return DRAFTS; }
   DRAFTS = data || [];
@@ -1470,6 +1617,8 @@ async function articleFields(id){
 async function saveArticleDraft(opts = {}){
   if (!ownerNow()) { if (!opts.auto) alert("Only the owner can save drafts."); return false; }
   if (artSaving || publishingArticle) return false;
+  if (artSchedAt && opts.auto) return false;   // never silently turn a scheduled article back into a draft
+  if (artSchedAt && !confirm("Save as a draft? This unschedules the article.")) return false;
   const t = document.getElementById("art-title").value.trim();
   const ed = document.getElementById("art-body");
   const bodyText = ed.textContent.trim() || (ed.querySelector("img") ? "img" : "");
@@ -1480,10 +1629,10 @@ async function saveArticleDraft(opts = {}){
     const id = artDraftId || ("a" + Date.now());
     const f = await articleFields(id);
     let error;
-    if (artDraftId) ({ error } = await sb.from("articles").update({ ...f, status: "draft" }).eq("id", id).eq("status", "draft"));
+    if (artDraftId) ({ error } = await sb.from("articles").update({ ...f, status: "draft" }).eq("id", id).in("status", ["draft", "scheduled"]));
     else ({ error } = await sb.from("articles").insert({ id, ...f, status: "draft" }));
     if (error) throw error;
-    artDraftId = id; artDirty = false; syncDraftUi();
+    artDraftId = id; artSchedAt = null; artDirty = false; syncDraftUi();
     setDraftMsg((opts.auto ? "Autosaved" : "Draft saved") + " · " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }));
     if (!opts.auto) showToast("Draft saved");
     return true;
@@ -1526,13 +1675,66 @@ async function publishArticle(){
     alert("Could not publish: " + (e.message || e));
   } finally { publishingArticle = false; }
 }
+function toggleArtSchedule(){
+  const box = document.getElementById("art-sched"), inp = document.getElementById("art-sched-at");
+  box.classList.toggle("on");
+  if (box.classList.contains("on") && !inp.value) inp.value = defaultSchedule();
+}
+async function scheduleArticle(){
+  if (!ownerNow()) return;
+  if (publishingArticle || artSaving) return;
+  const title = document.getElementById("art-title").value.trim();
+  const body0 = document.getElementById("art-body").innerHTML.trim();
+  if (!title || !body0) return alert("Title and body.");
+  const iso = centralInputToISO(document.getElementById("art-sched-at").value);
+  if (!checkScheduleTime(iso)) return;
+  publishingArticle = true;
+  try {
+    const id = artDraftId || ("a" + Date.now());
+    const f = await articleFields(id);
+    let error;
+    if (artDraftId) ({ error } = await sb.from("articles").update({ ...f, status: "scheduled", published_at: iso }).eq("id", id));
+    else ({ error } = await sb.from("articles").insert({ id, ...f, status: "scheduled", published_at: iso }));
+    if (error) throw error;
+    showToast("Article scheduled for " + fmtCentral(iso));
+    artDirty = false;
+    closeEditor();
+  } catch (e) {
+    alert("Could not schedule: " + (e.message || e));
+  } finally { publishingArticle = false; }
+}
+function openScheduledArticle(id){
+  const a = SCHED_ARTS.find(x => x.id === id);
+  if (a) openEditor({ ...a, status: "scheduled" });
+}
+async function publishArticleNow(id){
+  if (!confirm("Publish this article now?")) return;
+  const { error } = await sb.from("articles").update({ status: "published" }).eq("id", id).eq("status", "scheduled");
+  if (error) { alert("Could not publish: " + error.message); return; }
+  showToast("Article published"); renderArticles();
+}
+async function unscheduleArticle(id){
+  if (!confirm("Cancel the schedule? The article goes back to your drafts.")) return;
+  const { error } = await sb.from("articles").update({ status: "draft" }).eq("id", id).eq("status", "scheduled");
+  if (error) { alert("Could not cancel: " + error.message); return; }
+  showToast("Schedule canceled, moved to drafts"); renderArticles();
+}
 function renderDrafts(){
   const box = document.getElementById("article-drafts");
   if (!box) return;
   const editing = document.getElementById("article-editor").style.display === "block";
-  if (!ownerNow() || !DRAFTS.length || editing) { box.classList.remove("has-drafts"); box.innerHTML = ""; return; }
-  const wasOpen = box.querySelector("details")?.open ?? true;
-  box.innerHTML = `<details ${wasOpen ? "open" : ""}><summary>Drafts <span class="n">(${DRAFTS.length})</span></summary>` +
+  if (!ownerNow() || !(DRAFTS.length || SCHED_ARTS.length) || editing) { box.classList.remove("has-drafts"); box.innerHTML = ""; return; }
+  const wasOpen = box.querySelector("details.drafts")?.open ?? true;
+  const schedOpen = box.querySelector("details.sched")?.open ?? true;
+  const sched = !SCHED_ARTS.length ? "" : `<details class="sched" ${schedOpen ? "open" : ""}><summary>🕓 Scheduled <span class="n">(${SCHED_ARTS.length})</span></summary>` +
+    SCHED_ARTS.map(a => `<div class="draft-row">
+      <div class="dt" onclick="openScheduledArticle('${a.id}')"><b>${escapeHtml(a.title || "Untitled")}</b><span>Publishes ${escapeHtml(fmtCentral(a.published_at))}</span></div>
+      <button onclick="openScheduledArticle('${a.id}')">Edit</button>
+      <button onclick="publishArticleNow('${a.id}')">Publish now</button>
+      <button class="del" onclick="unscheduleArticle('${a.id}')">Cancel</button>
+    </div>`).join("") + `</details>`;
+  if (!DRAFTS.length) { box.innerHTML = sched; box.classList.add("has-drafts"); return; }
+  box.innerHTML = sched + `<details class="drafts" ${wasOpen ? "open" : ""}><summary>Drafts <span class="n">(${DRAFTS.length})</span></summary>` +
     DRAFTS.map(d => `<div class="draft-row">
       <div class="dt" onclick="openDraft('${d.id}')"><b>${escapeHtml(d.title || "Untitled draft")}</b><span>Edited ${new Date(d.updated_at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span></div>
       <button onclick="openDraft('${d.id}')">Edit</button>
