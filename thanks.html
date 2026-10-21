@@ -31,8 +31,7 @@
   // ?track=<slug>: show which single was bought (cover only for tracks whose art is already public)
   var T = { "for-shore": ["For Shore", "/assets/cover-for-shore.jpg"], "slow-bum": ["Slow Bum", "/assets/cover-slow-bum.jpg"],
     "owl-knight": ["Owl Knight", "/assets/cover-owl-knight.jpg"], "a-bunny": ["A-Bunny", "/assets/cover-a-bunny.jpg"],
-    "under-hoof": ["Under Hoof", "/assets/cover-under-hoof.jpg"], "waste-bin": ["Waste Bin", "/assets/cover-waste-bin.jpg"],
-    "den-of-pires": ["Den Of Pires", ""] };
+    "under-hoof": ["Under Hoof", "/assets/cover-under-hoof.jpg"], "waste-bin": ["Waste Bin", "/assets/cover-waste-bin.jpg"] };
   var t = T[new URLSearchParams(location.search).get("track")];
   if (t) {
     document.getElementById("h").textContent = "Thanks for buying " + t[0] + " 🎧";
