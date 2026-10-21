@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thanks for your purchase · Johnny Skyride</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon-32.png">
+<style>
+  body { margin:0; background:#000; color:#e7e9ea; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; display:flex; min-height:100vh; align-items:center; justify-content:center; padding:20px; box-sizing:border-box; }
+  .card { max-width:460px; width:100%; background:#16181c; border:1px solid #2f3336; border-radius:16px; padding:28px; }
+  .k { font-size:13px; letter-spacing:.08em; color:#71767b; text-transform:uppercase; }
+  h1 { font-size:26px; margin:8px 0 14px; color:#fff; }
+  p { line-height:1.5; margin:0 0 14px; color:#c9ccd0; }
+  .cov { width:120px; height:120px; border-radius:12px; object-fit:cover; display:none; margin-bottom:14px; }
+  a.btn { display:inline-block; background:#ff6bb5; color:#111; font-weight:800; text-decoration:none; padding:11px 20px; border-radius:999px; margin-top:6px; }
+  .fine { font-size:13px; color:#8b9096; }
+  .fine a { color:#1d9bf0; }
+</style>
+</head>
+<body>
+<main class="card">
+  <img class="cov" id="cov" alt="">
+  <div class="k">Johnny Skyride · Music</div>
+  <h1 id="h">Thanks for the support 🎧</h1>
+  <p>Your payment went through. <b>Your download link is on its way by email</b> to the address you used at checkout. It usually lands within a few minutes.</p>
+  <p class="fine">Nothing after 15 minutes? Check spam or promotions, then write to <a href="mailto:johnnyskyride@outlook.com">johnnyskyride@outlook.com</a> and we'll send it by hand. The link works for 7 days.</p>
+  <a class="btn" href="/music/">Back to the music</a>
+</main>
+<script>
+  // ?track=<slug>: show which single was bought (cover only for tracks whose art is already public)
+  var T = { "for-shore": ["For Shore", "/assets/cover-for-shore.jpg"], "slow-bum": ["Slow Bum", "/assets/cover-slow-bum.jpg"],
+    "owl-knight": ["Owl Knight", "/assets/cover-owl-knight.jpg"], "a-bunny": ["A-Bunny", "/assets/cover-a-bunny.jpg"],
+    "under-hoof": ["Under Hoof", "/assets/cover-under-hoof.jpg"], "waste-bin": ["Waste Bin", "/assets/cover-waste-bin.jpg"],
+    "den-of-pires": ["Den Of Pires", ""] };
+  var t = T[new URLSearchParams(location.search).get("track")];
+  if (t) {
+    document.getElementById("h").textContent = "Thanks for buying " + t[0] + " 🎧";
+    document.title = "Thanks for buying " + t[0] + " · Johnny Skyride";
+    if (t[1]) { var c = document.getElementById("cov"); c.src = t[1]; c.alt = t[0]; c.style.display = "block"; }
+  }
+</script>
+</body>
+</html>
