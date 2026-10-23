@@ -243,7 +243,7 @@
   }
   .compose-bar button:disabled { opacity: .5; cursor: default; }
 
-  .post { display: flex; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); min-width: 0; }
+  .post { display: flex; gap: 12px; padding: 16px 16px 12px; border-bottom: 1px solid var(--border); min-width: 0; }
   .post > div { min-width: 0; flex: 1; }
   .post:hover { background: rgba(255,255,255,.03); }
   .post img.av { width: 40px; height: 40px; border-radius: 50%; }
@@ -252,12 +252,36 @@
   .post .who > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .post .who .post-menu { align-self: flex-start; }
   .post .who svg { flex: none; }
-  .post .who + .body { margin-top: 2px; }
-  .stamp { color: var(--muted); font-size: 13px; margin-top: 8px; }
-  .comment .stamp { font-size: 12px; margin-top: 4px; }
+  .post .who { min-height: 32px; }
+  .post .who + .body { margin-top: 4px; }
+  .post-menu > button { min-width: 32px; min-height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; margin: -4px -8px -4px 0; }
+  .post-menu > button:hover { background: rgba(255,255,255,.08); }
+  .post .av { margin-top: 0; }
+  .stamp { color: var(--muted); font-size: 13px; margin-top: 12px; }
+  .comment .stamp, .reply-entry .stamp { font-size: 12px; margin-top: 8px; }
+  .post .actions { margin-top: 4px; min-height: 32px; align-items: center; }
+  .comment > .c-del + div, .comment > span + div { margin-top: 4px; }
+  .c-actions { margin-top: 8px !important; }
+  .comment { padding: 12px 0 !important; }
+  .post .body + .post-media, .post .body ~ .post-media { margin-top: 12px; }
+  a.tag { color: #ff4fa3; text-decoration: none; }
+  a.tag:hover { text-decoration: underline; }
+  .feed-tools { scroll-margin-top: 56px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  #feed-search { width: 100%; box-sizing: border-box; background: #16181c; color: #e7e9ea; border: 1px solid #2f3336; border-radius: 999px; padding: 10px 16px; font-size: 15px; outline: none; }
+  #feed-search:focus { border-color: #ff4fa3; }
+  .trending { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .trending[hidden], .feed-filter[hidden] { display: none; }
+  a.tag.chip { border: 1px solid #3a2030; background: rgba(255,79,163,.08); border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 600; }
+  a.tag.chip i { font-style: normal; color: var(--muted); font-weight: 400; margin-left: 2px; }
+  a.tag.chip.on { background: #ff4fa3; color: #000; }
+  a.tag.chip.on i { color: #000; }
+  .feed-filter { display: flex; align-items: baseline; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .ff-title { font-size: 20px; font-weight: 800; color: #ff4fa3; overflow-wrap: anywhere; }
+  .ff-count { color: var(--muted); font-size: 14px; }
+  .feed-filter button { margin-left: auto; background: #16181c; color: #e7e9ea; border: 1px solid #2f3336; border-radius: 999px; padding: 6px 14px; font-weight: 700; cursor: pointer; min-height: 32px; }
   .post .who b { font-size: 15px; }
   .post .who span { color: var(--muted); font-size: 15px; }
-  .post .body { white-space: pre-wrap; font-size: 15px; margin: 4px 0 8px; line-height: 1.4; }
+  .post .body { white-space: pre-wrap; font-size: 15px; margin: 4px 0 0; line-height: 1.45; }
   .post .media { width: 100%; border-radius: 16px; border: 1px solid var(--border); margin-top: 8px; }
   .actions { display: flex; justify-content: space-between; max-width: 425px; color: var(--muted); font-size: 13px; }
   .actions span { cursor: pointer; }
@@ -269,7 +293,8 @@
   .media-btn { background: transparent; border: 0; color: var(--accent); font-weight: 700; cursor: pointer; padding: 6px 10px; }
   .media-preview { margin: 8px 16px; max-width: 280px; }
   .media-preview img, .media-preview video { width: 100%; border-radius: 12px; border: 1px solid var(--border); }
-  .liked { color: #f91880 !important; }
+  .liked { color: #a855f7 !important; }
+  .heart:hover, .c-heart:hover { color: #a855f7 !important; }
   .heart i, .c-heart i { font-style: normal; }
 
   .star { display:inline-block; vertical-align:-2px; margin-left:4px; }
@@ -606,6 +631,11 @@ no one × nothing × nuh uh</div>
       </div>
       <div id="media-preview" class="media-preview owner-only"></div>
       <div id="sched-list" class="sched-list owner-only owner-strict"></div>
+      <div class="feed-tools">
+        <input id="feed-search" type="search" placeholder="Search posts or #tags" autocomplete="off" enterkeyhint="search" aria-label="Search posts or hashtags" oninput="onFeedSearch(this.value)">
+        <div id="feed-trending" class="trending" hidden></div>
+      </div>
+      <div id="feed-filter" class="feed-filter" hidden></div>
       <div id="feed"></div>
     </section>
 
@@ -1003,6 +1033,57 @@ const seenViews = new Set(JSON.parse(sessionStorage.getItem("jsr-seen")||"[]"));
 renderFeed();
 let feedPage = 0;
 const PAGE_SIZE = 17;
+let feedFilter = (() => { const m = location.hash.match(/^#tag-(.+)$/); if (!m) return {}; try { return { tag: decodeURIComponent(m[1]).toLowerCase() }; } catch { return {}; } })();
+// search through Supabase so RLS decides what's visible (scheduled posts stay hidden from anon)
+async function searchPostIds(f){
+  if (!sb) return null;
+  let q = sb.from("posts").select("id").limit(500);
+  if (f.tag) q = q.contains("tags", [f.tag]);
+  else {
+    const term = f.q.replace(/[%_\\,()]/g, " ").trim();
+    if (!term) return null;
+    q = q.ilike("body", "%" + term + "%");
+  }
+  const { data, error } = await q;
+  if (error) { console.warn("search", error.message); return new Set(); }
+  return new Set((data || []).map(r => r.id));
+}
+function setFeedFilter(f, quiet){
+  feedFilter = f || {};
+  feedPage = 0;
+  const box = document.getElementById("feed-search");
+  if (box && !quiet) box.value = feedFilter.tag ? "#" + feedFilter.tag : (feedFilter.q || "");
+  if (feedFilter.tag || feedFilter.q) {
+    const home = document.getElementById("home");
+    if (home && !home.classList.contains("on")) { try { show("home", { history: "none" }); } catch {} }
+    if (currentTab !== "posts") { currentTab = "posts"; document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === "posts")); }
+  }
+  renderFeed();
+}
+function clearFeedFilter(){
+  const box = document.getElementById("feed-search"); if (box) box.value = "";
+  if (/^#tag-/.test(location.hash)) { try { history.replaceState(history.state, "", location.pathname + location.search); } catch {} }
+  setFeedFilter({}, true);
+}
+let feedSearchT = 0;
+function onFeedSearch(v){
+  clearTimeout(feedSearchT);
+  feedSearchT = setTimeout(() => {
+    v = v.trim();
+    const t = v.match(/^#([\p{L}\p{N}\p{M}_]+)$/u);
+    if (/^#tag-/.test(location.hash)) { try { history.replaceState(history.state, "", location.pathname + location.search); } catch {} }
+    setFeedFilter(t ? { tag: t[1].toLowerCase() } : v ? { q: v } : {}, true);
+  }, 250);
+}
+function renderTrending(posts){
+  const el = document.getElementById("feed-trending"); if (!el) return;
+  const n = {};
+  const re = /(?<![\p{L}\p{N}\p{M}_&\/#])#([\p{L}\p{N}\p{M}_]*\p{L}[\p{L}\p{N}\p{M}_]*)/gu;
+  posts.forEach(p => { const seen = new Set(); String(p.t || "").split("\n---embed---\n")[0].replace(/https?:\/\/\S+/g, " ").replace(re, (_, t) => { t = t.toLowerCase(); if (!seen.has(t)) { seen.add(t); n[t] = (n[t] || 0) + 1; } return _; }); });
+  const top = Object.entries(n).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  el.innerHTML = top.map(([t, c]) => `<a class="tag chip${feedFilter.tag === t ? " on" : ""}" href="/#tag-${encodeURIComponent(t)}">#${escapeHtml(t)} <i>${c}</i></a>`).join("");
+  el.hidden = !top.length;
+}
 function feedGo(n){ feedPage = n; renderFeed(); window.scrollTo(0,0); }
 async function renderFeed(){
   const seq = ++feedRenderSeq;           // only the newest render may paint (tabs can't overwrite each other)
@@ -1010,6 +1091,17 @@ async function renderFeed(){
   const mine = await loadPosts();
   if (seq !== feedRenderSeq) return;
   let all = mine.concat(SEED);
+  const fbar = document.getElementById("feed-filter");
+  if (feedFilter.tag || feedFilter.q) {
+    const ids = await searchPostIds(feedFilter);
+    if (seq !== feedRenderSeq) return;
+    all = ids ? mine.filter(p => ids.has(p.id)) : [];
+    const label = feedFilter.tag ? "#" + escapeHtml(feedFilter.tag) : "“" + escapeHtml(feedFilter.q) + "”";
+    fbar.innerHTML = `<div class="ff-title">${label}</div><div class="ff-count">${all.length} ${all.length === 1 ? "post" : "posts"}</div><button type="button" onclick="clearFeedFilter()">✕ Clear</button>`;
+    fbar.hidden = false;
+    if (!all.length) { document.getElementById("feed").innerHTML = '<div style="padding:40px 16px;color:#71767b;text-align:center">No matching posts.</div>'; return; }
+  } else if (fbar) { fbar.hidden = true; fbar.innerHTML = ""; }
+  renderTrending(mine);
   if (tab === "media") all = all.filter(p => p.media || p.mediaType);
   if (tab === "replies") {
     const entries = await loadReplyEntries(mine);
@@ -2620,7 +2712,7 @@ const FMT_TRIPLE = /\*\*\*(?=[^\s*])([^*\n]*?[^\s*])\*\*\*/g;
 const FMT_BOLD = /\*\*(?=[^\s*])([^\n]*?[^\s*])\*\*/g;
 const FMT_STAR = /(^|[^*\w])\*(?=[^\s*])([^*\n]*?[^\s*])\*(?![*\w])/g;
 const FMT_UNDER = /(^|[^\w])_(?=[^\s_])([^_\n]*?[^\s_])_(?!\w)/g;
-const FMT_PROTECT = /(https?:\/\/[^\s<]+|@[A-Za-z0-9_\-]+)/g;
+const FMT_PROTECT = /(https?:\/\/[^\s<]+|@[A-Za-z0-9_\-]+|(?<![\p{L}\p{N}\p{M}_&\/#])#[\p{L}\p{N}\p{M}_]*\p{L}[\p{L}\p{N}\p{M}_]*)/gu;
 function fmtProtect(s, keep){ return s.replace(FMT_PROTECT, m => "\u0000" + (keep.push(m) - 1) + "\u0001"); }
 function fmtRestore(s, keep, fn){ return s.replace(/\u0000(\d+)\u0001/g, (_, i) => fn(keep[+i])); }
 function fmtApply(s, wrap){
@@ -2634,7 +2726,8 @@ function formatText(text){
   let s = fmtProtect(escapeHtml(String(text ?? "").replace(/[\u0000\u0001]/g, "")), keep);
   s = fmtApply(s, (k, t) => k === "bi" ? `<strong><em>${t}</em></strong>` : k === "b" ? `<strong>${t}</strong>` : `<em>${t}</em>`);
   return fmtRestore(s, keep, m => m[0] === "@"
-    ? `<span class="mention" onclick="openMember('${m.slice(1)}')">${m}</span>` : m);
+    ? `<span class="mention" onclick="openMember('${m.slice(1)}')">${m}</span>`
+    : m[0] === "#" ? `<a class="tag" href="/#tag-${encodeURIComponent(m.slice(1).toLowerCase())}" onclick="event.stopPropagation()">${m}</a>` : m);
 }
 function stripFormatting(text){
   const keep = [];
@@ -2875,6 +2968,9 @@ async function flashComment(kind, ownerId, cid){
 async function handleDeepLink(){
   let h = location.hash.slice(1);
   try { h = decodeURIComponent(h); } catch {}
+  const tm = h.match(/^tag-(.+)$/);
+  if (tm) { setFeedFilter({ tag: tm[1].toLowerCase() }); setTimeout(() => { const f = document.querySelector(".feed-tools"); if (f) f.scrollIntoView({ block: "start" }); }, 400); return; }
+  if (feedFilter.tag && !h) { setFeedFilter({}, true); }
   const m = h.match(/^(ac|c)-(.+)$/), pm = h.match(/^post-(.+)$/);
   if (!sb || (!m && !pm)) return;
   if (pm) {
@@ -2932,6 +3028,7 @@ function restoreReturnTo(){
     if (n) { n.hidden = false; if (typeof show === "function") show("store", { history: "none", noScroll: true }); }
   }
 })();
+if (feedFilter.tag) window.addEventListener("load", () => { const b = document.getElementById("feed-search"); if (b) b.value = "#" + feedFilter.tag; });
 if (/^#(c|ac|post)-/.test(location.hash)) {
   const go = () => setTimeout(handleDeepLink, 300);
   if (document.readyState === "complete") go(); else window.addEventListener("load", go);
