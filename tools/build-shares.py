@@ -13,7 +13,7 @@ Output (all committed to the repo, served by GitHub Pages):
   share/manifest.json          what was built (content hashes), so unchanged items are skipped
 
 Each stub has server-rendered og:/twitter: tags (crawlers don't run JS) plus an instant JS redirect
-(and a <noscript> meta refresh) for real visitors.
+(no meta refresh: crawlers would follow it) plus a visible "View post" link for real visitors.
 
 Data comes from Supabase's REST API with the site's public (publishable) anon key, so only rows the
 public can read are ever published. Anything that disappears (deleted, or no longer public) has its stub
@@ -377,12 +377,11 @@ STUB = """<!doctype html>
 <meta name="twitter:image" content="{image}">
 <meta name="twitter:image:alt" content="{alt}">
 <script>location.replace({target_js});</script>
-<noscript><meta http-equiv="refresh" content="0; url={target}"></noscript>
 <style>body{{background:#000;color:#e7e9ea;font:16px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:600px;margin:40px auto;padding:0 16px}}a{{color:#ff6bb5}}p{{white-space:pre-wrap}}</style>
 </head><body>
 <p><b>{name_html}</b> <span style="color:#71767b">@{handle_html}</span></p>
 <p>{text_html}</p>
-<p><a href="{target}">Open on johnnyskyride.com →</a></p>
+<p><a href="{target}">View post →</a></p>
 </body></html>
 """
 
@@ -519,7 +518,7 @@ def main():
         kind_word = {"post": "", "comment": " · comment", "acomment": " · article comment"}[it["kind"]]
         title = oneline(f"{it['name']} (@{it['handle']}){kind_word}", 90)
         alt = oneline(f"{it['name']}: {plain}", 400) if not is_img else oneline(plain or f"Image posted by {it['name']}", 400)
-        url = f"{SITE}/{key}/"
+        url = esc(f"{SITE}/{key}/?v={sig[:8]}")
         image = f"{SITE}/share/{img_name}?v={sig[:8]}"
         page = STUB.format(title=esc(title), desc=esc(desc), url=url, image=esc(image), alt=esc(alt),
                            image_type="image/jpeg" if img_name.endswith(".jpg") else "image/png", iw=iw, ih=ih,
