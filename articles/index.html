@@ -247,7 +247,14 @@
   .post > div { min-width: 0; flex: 1; }
   .post:hover { background: rgba(255,255,255,.03); }
   .post img.av { width: 40px; height: 40px; border-radius: 50%; }
-  .post .who { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+  .post .who { display: flex; gap: 6px; align-items: center; flex-wrap: nowrap; min-width: 0; }
+  .post .who > b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .post .who > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .post .who .post-menu { align-self: flex-start; }
+  .post .who svg { flex: none; }
+  .post .who + .body { margin-top: 2px; }
+  .stamp { color: var(--muted); font-size: 13px; margin-top: 8px; }
+  .comment .stamp { font-size: 12px; margin-top: 4px; }
   .post .who b { font-size: 15px; }
   .post .who span { color: var(--muted); font-size: 15px; }
   .post .body { white-space: pre-wrap; font-size: 15px; margin: 4px 0 8px; line-height: 1.4; }
@@ -946,7 +953,7 @@ async function loadPosts(){
   SCHEDULED = (data || []).filter(r => r.publish_at && new Date(r.publish_at).getTime() > nowMs).reverse();
   renderScheduled();
   const posts = (data || []).filter(r => !(r.publish_at && new Date(r.publish_at).getTime() > nowMs)).map(r => ({
-    id: r.id, t: r.body, d: new Date(r.created_at).toLocaleString(), ts: new Date(r.created_at).getTime(),
+    id: r.id, t: r.body, d: fmtStamp(r.created_at), ts: new Date(r.created_at).getTime(),
     author: r.author, handle: r.handle, avatar: r.avatar, mediaType: r.media_type, bot: r.bot, likes: r.likes || 0, views: r.views || 0
   }));
   return posts;
@@ -964,7 +971,7 @@ async function loadComments(){
   (data || []).forEach(r => {
     (grouped[r.post_id] = grouped[r.post_id] || []).push({
       id: r.id, parent: r.parent_id || null, likes: r.likes || 0, n: r.name, h: r.handle, t: r.body, avatar: r.avatar, media: r.media, mediaType: r.media_type, reply: r.is_reply, bot: r.bot,
-      d: new Date(r.created_at).toLocaleString(), ts: new Date(r.created_at).getTime()
+      d: fmtStamp(r.created_at), ts: new Date(r.created_at).getTime()
     });
   });
   return grouped;
@@ -1042,7 +1049,7 @@ async function renderFeed(){
     return `<article class="post" data-post="${id}">
       <img class="av" src="${p.avatar || (p.handle === "johnnyskyride" && OWNER_AV) || AV}" alt="">
       <div style="flex:1">
-        <div class="who"><b>${p.author || "×ＭΛＮ×ｂΞｉｎｇ×"}</b> ${p.bot ? '<svg class="star" viewBox="0 0 24 24" width="16" height="16" aria-label="Bot"><path fill="#c0c0c0" d="M12 2l2.9 6.9 7.4.6-5.6 4.8 1.7 7.2L12 17.8 5.6 21.5l1.7-7.2L1.7 9.5l7.4-.6z"/></svg>' : '<svg class="star" viewBox="0 0 24 24" width="16" height="16" aria-label="Verified"><path fill="#f5c518" d="M12 2l2.9 6.9 7.4.6-5.6 4.8 1.7 7.2L12 17.8 5.6 21.5l1.7-7.2L1.7 9.5l7.4-.6z"/></svg>'}<span>@${p.handle || "johnnyskyride"} · ${p.d}</span>
+        <div class="who"><b>${p.author || "×ＭΛＮ×ｂΞｉｎｇ×"}</b> ${p.bot ? '<svg class="star" viewBox="0 0 24 24" width="16" height="16" aria-label="Bot"><path fill="#c0c0c0" d="M12 2l2.9 6.9 7.4.6-5.6 4.8 1.7 7.2L12 17.8 5.6 21.5l1.7-7.2L1.7 9.5l7.4-.6z"/></svg>' : '<svg class="star" viewBox="0 0 24 24" width="16" height="16" aria-label="Verified"><path fill="#f5c518" d="M12 2l2.9 6.9 7.4.6-5.6 4.8 1.7 7.2L12 17.8 5.6 21.5l1.7-7.2L1.7 9.5l7.4-.6z"/></svg>'}<span class="h">@${p.handle || "johnnyskyride"}</span>
           <div class="post-menu owner-only" onclick="event.stopPropagation()">
             <button onclick="toggleMenu('${id}')">⋯</button>
             <div class="menu" id="menu-${id}"><button onclick="deletePost('${id}')">Delete</button></div>
@@ -1050,6 +1057,7 @@ async function renderFeed(){
         </div>
         <div class="body" id="body-${id}">${(function(){ try { return renderPostBody(p.t, id); } catch(e){ return escapeHtml(p.t||""); } })()}</div>
         ${mediaHtml(id, p)}
+        <div class="stamp">${p.d}</div>
         <div class="actions">
           <span onclick="focusReply('${id}')">💬 ${cs.length}</span>
           <span class="starred-only" onclick="openRepost('${id}')">↻</span>
@@ -1294,6 +1302,9 @@ function centralInputToISO(v){            // "2026-10-22T09:30" in Chicago time 
 function isoToCentralInput(iso){
   const ms = new Date(iso).getTime(), d = new Date(ms + tzOffsetMs(ms));
   return d.toISOString().slice(0, 16);
+}
+function fmtStamp(iso){
+  return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
 }
 function fmtCentral(iso){
   return new Date(iso).toLocaleString("en-US", { timeZone: TZ, weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + " CT";
@@ -2397,6 +2408,7 @@ function commentHtml(kind, ownerId, c, depth, kids){
     children = `<div class="c-children${depth + 1 > THREAD_MAX_INDENT ? " flat" : ""}">${children}</div>`;
   }
   return `<div class="comment" data-depth="${depth}" data-ckind="${kind}" data-comment="${escapeHtml(c.id)}"><b style="cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">${escapeHtml(c.n)}</b>${commentStar(c)} <span style="color:#71767b;cursor:pointer" onclick="openMember('${escapeHtml(c.h)}')">@${escapeHtml(c.h)}</span>${del}<div>${linkMentions(c.t || "")}</div>${media}
+    ${c.d ? `<div class="stamp">${escapeHtml(c.d)}</div>` : ""}
     <div class="c-actions">
       <span ${attrs} onclick="openCommentReply(this.dataset.kind, this.dataset.cid)" title="Reply" aria-label="Reply">💬 ${ch.length || ""}</span>
       <span class="starred-only" ${attrs} onclick="openRepostComment(this.dataset.kind, this.dataset.cid)" title="Repost or quote" aria-label="Repost or quote">↻</span>
@@ -2782,7 +2794,7 @@ async function loadReplyEntries(posts){
       loadArticles()
     ]);
     const artMap = {}; (arts || []).forEach(a => artMap[a.id] = a);
-    const rows = (ac || []).map(r => ({ id: r.id, aid: r.article_id, parent: r.parent_id || null, likes: r.likes || 0, n: r.name || r.handle, h: r.handle, t: r.body, avatar: r.avatar, bot: r.bot, ts: new Date(r.created_at).getTime(), d: new Date(r.created_at).toLocaleString() }));
+    const rows = (ac || []).map(r => ({ id: r.id, aid: r.article_id, parent: r.parent_id || null, likes: r.likes || 0, n: r.name || r.handle, h: r.handle, t: r.body, avatar: r.avatar, bot: r.bot, ts: new Date(r.created_at).getTime(), d: fmtStamp(r.created_at) }));
     const byId = {}; rows.forEach(c => { byId[c.id] = c; CMT.article[c.id] = Object.assign({}, c, { kind: "article", ownerId: c.aid }); });
     rows.forEach(c => {
       if (!isOwnerOrBotHandle(c)) return;
@@ -2810,11 +2822,12 @@ function replyEntryHtml(e){
   return `<article class="post reply-entry" data-reply="${escapeHtml(c.id)}">
     <img class="av" src="${av}" alt="">
     <div style="flex:1;min-width:0">
-      <div class="who"><b>${escapeHtml(c.n)}</b>${commentStar(c)} <span>@${escapeHtml(c.h)} · ${escapeHtml(c.d || "")}</span></div>
+      <div class="who"><b>${escapeHtml(c.n)}</b>${commentStar(c)} <span>@${escapeHtml(c.h)}</span></div>
       ${ctxLine ? `<div class="reply-to" ${go}>${ctxLine}</div>` : ""}
       <div class="body" ${go} style="cursor:pointer">${linkMentions(c.t || "")}</div>
       ${c.media && /^https?:|^data:image\//.test(c.media) ? (c.mediaType && c.mediaType.startsWith("video") ? `<div class="post-media"><video src="${c.media}" controls playsinline></video></div>` : `<div class="post-media"><img src="${c.media}" alt=""></div>`) : ""}
       ${preview}
+      ${c.d ? `<div class="stamp">${escapeHtml(c.d)}</div>` : ""}
       <div class="c-actions">
         <span ${attrs} onclick="openCommentReply(this.dataset.kind, this.dataset.cid)" title="Reply" aria-label="Reply">💬 ${e.replyCount || ""}</span>
         <span class="starred-only" ${attrs} onclick="openRepostComment(this.dataset.kind, this.dataset.cid)" title="Repost or quote" aria-label="Repost or quote">↻</span>
