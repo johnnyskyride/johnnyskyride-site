@@ -57,6 +57,13 @@
   "image": "/assets/og-imagery.jpg",
   "alt": "Imagery — Night drive, Palm, Crouch, Stand, Walk"
  },
+ "collections": {
+  "path": "/collections/",
+  "title": "Collections · ×ＭΛＮ×ｂΞｉｎｇ× — Johnny Skyride",
+  "description": "Collections by Johnny Skyride — NFTs on Mallow: The Fuzz, Quinn Punk, Estudios Burro",
+  "image": "/assets/og-collections.jpg",
+  "alt": "Collections — NFTs: The Fuzz, Quinn Punk, Estudios Burro"
+ },
  "sessions": {
   "path": "/sessions/",
   "title": "Sessions · ×ＭΛＮ×ｂΞｉｎｇ× — Johnny Skyride",
@@ -336,6 +343,22 @@
   .article h2 { margin: 6px 0; font-size: 18px; }
   .article p { color: var(--muted); margin: 6px 0; }
 
+
+  /* Collections: kinds (chips) + card grid. Data lives in COLLECTIONS in the script. */
+  .coll-kinds { display: flex; flex-wrap: wrap; gap: 10px; padding: 16px 16px 4px; }
+  .coll-kinds button { background: rgba(255,107,181,.08); border: 1px solid #3a2030; color: var(--text); border-radius: 999px; padding: 7px 16px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .coll-kinds button.on { background: var(--accent); color: #000; border-color: var(--accent); }
+  .coll-note { color: var(--muted); font-size: 13px; margin: 8px 16px 0; line-height: 1.5; }
+  .coll-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; padding: 16px 16px 32px; }
+  .coll-card { border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: #0b0b0b; display: flex; flex-direction: column; }
+  .coll-card img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #111; }
+  .coll-card .cb { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .coll-card h3 { margin: 0; font-size: 17px; }
+  .coll-card .ed { color: var(--muted); font-size: 14px; }
+  .coll-card .pr { font-size: 14px; } .coll-card .pr span { color: var(--muted); font-size: 12px; }
+  .coll-card a.view { margin-top: auto; align-self: flex-start; background: var(--accent); color: #000; font-weight: 800; font-size: 14px; text-decoration: none; border-radius: 999px; padding: 8px 16px; }
+  @media (max-width: 480px) { .coll-grid { grid-template-columns: 1fr; } }
+
   .grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -554,6 +577,7 @@
     <button class="nav-btn" data-page="articles"><span class="ic">✎</span><span>Articles</span></button>
     <button class="nav-btn" data-page="music"><span class="ic">♪</span><span>Music</span></button>
     <button class="nav-btn" data-page="imagery"><span class="ic">▣</span><span>Imagery</span></button>
+    <button class="nav-btn" data-page="collections"><span class="ic">◈</span><span>Collections</span></button>
     <button class="nav-btn active" data-page="sessions"><span class="ic">✦</span><span>Sessions</span></button>
     <button class="nav-btn" data-page="members"><span class="ic">☺</span><span>Members</span></button>
     <button class="nav-btn" data-page="store"><span class="ic">▣</span><span>Store</span></button>
@@ -572,6 +596,7 @@
     <button data-page="articles">Articles</button>
     <button data-page="music">Music</button>
     <button data-page="imagery">Imagery</button>
+    <button data-page="collections">Collections</button>
     <button class="active" data-page="sessions">Sessions</button>
     <button data-page="members">Members</button>
     <button data-page="store">Store</button>
@@ -776,6 +801,12 @@ no one × nothing × nuh uh</div>
     </section>
 
     <!-- SESSIONS -->
+    <section class="page" id="collections">
+      <div class="topbar">Collections</div>
+      <div class="coll-kinds" id="coll-kinds" role="tablist" aria-label="Collection type"></div>
+      <p class="coll-note" id="coll-note"></p>
+      <div class="coll-grid" id="coll-grid"></div>
+    </section>
     <section class="page on" id="sessions">
       <div class="topbar">Sessions</div>
       <div class="banner" style="background-image:url('/assets/gallery-beach.jpg');height:180px"></div>
@@ -3033,6 +3064,29 @@ if (/^#(c|ac|post)-/.test(location.hash)) {
   const go = () => setTimeout(handleDeepLink, 300);
   if (document.readyState === "complete") go(); else window.addEventListener("load", go);
 }
+
+// ---- Collections (static). To add a piece: add one entry to the right kind's items. To add a new kind: add a new key. ----
+const COLLECTIONS = {
+  nfts: {
+    label: "NFTs",
+    note: "Minted on Solana via Mallow. Prices shown were the listing when added and may have changed; check Mallow for current price and availability.",
+    items: [
+      { title: "The Fuzz", edition: "Limited edition of 26", price: "55 USDC", img: "/assets/collections/the-fuzz.jpg", url: "https://www.mallow.art/artwork/7grBThT4rc8Xi25S1EJyZ9WXKBsJrCx1s5EoQhD5KD6F" },
+      { title: "Quinn Punk", edition: "1 of 1", price: "88 SOL", img: "/assets/collections/quinn-punk.jpg", url: "https://www.mallow.art/artwork/HJMnM9sT1qckUGywEzuxQQib84quNpd3NEBpPC91VGji" },
+      { title: "Estudios Burro", edition: "Limited edition of 11", price: "44 USDC", img: "/assets/collections/estudios-burro.jpg", url: "https://www.mallow.art/artwork/DKQTUay2xhe8pheiPSiA2NCnD6yfHxc9PgUxgyNVYGry" }
+    ]
+  }
+};
+function renderCollections(kind){
+  const kinds = Object.keys(COLLECTIONS); if (!kinds.includes(kind)) kind = kinds[0];
+  const e = v => String(v).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  document.getElementById("coll-kinds").innerHTML = kinds.map(k => `<button role="tab" data-kind="${k}" class="${k===kind?"on":""}" aria-selected="${k===kind}">${e(COLLECTIONS[k].label)}</button>`).join("");
+  const c = COLLECTIONS[kind];
+  document.getElementById("coll-note").textContent = c.note || "";
+  document.getElementById("coll-grid").innerHTML = c.items.map(i => `<div class="coll-card"><img loading="lazy" decoding="async" src="${e(i.img)}" alt="${e(i.title)}"><div class="cb"><h3>${e(i.title)}</h3><div class="ed">${e(i.edition||"")}</div>${i.price?`<div class="pr">${e(i.price)} <span>at listing</span></div>`:""}<a class="view" href="${e(i.url)}" target="_blank" rel="noopener">View on Mallow ↗</a></div></div>`).join("");
+  document.querySelectorAll("#coll-kinds button").forEach(b => b.onclick = () => renderCollections(b.dataset.kind));
+}
+renderCollections("nfts");
 </script>
 
 <div class="mini" id="mini">
