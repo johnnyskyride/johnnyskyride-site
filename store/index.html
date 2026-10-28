@@ -351,7 +351,7 @@
   .coll-note { color: var(--muted); font-size: 13px; margin: 8px 16px 0; line-height: 1.5; }
   .coll-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; padding: 16px 16px 32px; }
   .coll-card { border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: #0b0b0b; display: flex; flex-direction: column; }
-  .coll-card img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #111; }
+  .coll-card img, .coll-card video { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #111; }
   .coll-card .cb { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
   .coll-card h3 { margin: 0; font-size: 17px; }
   .coll-card .ed { color: var(--muted); font-size: 14px; }
@@ -3071,9 +3071,9 @@ const COLLECTIONS = {
     label: "NFTs",
     note: "Minted on Solana via Mallow. Prices shown were the listing when added and may have changed; check Mallow for current price and availability.",
     items: [
-      { title: "The Fuzz", edition: "Limited edition of 26", price: "55 USDC", img: "/assets/collections/the-fuzz.jpg", url: "https://www.mallow.art/artwork/7grBThT4rc8Xi25S1EJyZ9WXKBsJrCx1s5EoQhD5KD6F" },
-      { title: "Quinn Punk", edition: "1 of 1", price: "88 SOL", img: "/assets/collections/quinn-punk.jpg", url: "https://www.mallow.art/artwork/HJMnM9sT1qckUGywEzuxQQib84quNpd3NEBpPC91VGji" },
-      { title: "Estudios Burro", edition: "Limited edition of 11", price: "44 USDC", img: "/assets/collections/estudios-burro.jpg", url: "https://www.mallow.art/artwork/DKQTUay2xhe8pheiPSiA2NCnD6yfHxc9PgUxgyNVYGry" }
+      { title: "The Fuzz", edition: "Limited edition of 26", price: "55 USDC", img: "/assets/collections/the-fuzz.jpg", video: "/assets/collections/the-fuzz.mp4", url: "https://www.mallow.art/artwork/7grBThT4rc8Xi25S1EJyZ9WXKBsJrCx1s5EoQhD5KD6F" },
+      { title: "Quinn Punk", edition: "1 of 1", price: "88 SOL", img: "/assets/collections/quinn-punk.jpg", video: "/assets/collections/quinn-punk.mp4", url: "https://www.mallow.art/artwork/HJMnM9sT1qckUGywEzuxQQib84quNpd3NEBpPC91VGji" },
+      { title: "Estudios Burro", edition: "Limited edition of 11", price: "44 USDC", img: "/assets/collections/estudios-burro.jpg", video: "/assets/collections/estudios-burro.mp4", url: "https://www.mallow.art/artwork/DKQTUay2xhe8pheiPSiA2NCnD6yfHxc9PgUxgyNVYGry" }
     ]
   }
 };
@@ -3083,8 +3083,9 @@ function renderCollections(kind){
   document.getElementById("coll-kinds").innerHTML = kinds.map(k => `<button role="tab" data-kind="${k}" class="${k===kind?"on":""}" aria-selected="${k===kind}">${e(COLLECTIONS[k].label)}</button>`).join("");
   const c = COLLECTIONS[kind];
   document.getElementById("coll-note").textContent = c.note || "";
-  document.getElementById("coll-grid").innerHTML = c.items.map(i => `<div class="coll-card"><img loading="lazy" decoding="async" src="${e(i.img)}" alt="${e(i.title)}"><div class="cb"><h3>${e(i.title)}</h3><div class="ed">${e(i.edition||"")}</div>${i.price?`<div class="pr">${e(i.price)} <span>at listing</span></div>`:""}<a class="view" href="${e(i.url)}" target="_blank" rel="noopener">View on Mallow ↗</a></div></div>`).join("");
+  document.getElementById("coll-grid").innerHTML = c.items.map(i => `<div class="coll-card">${i.video?`<video controls playsinline preload="none" poster="${e(i.img)}" src="${e(i.video)}" aria-label="${e(i.title)}"></video>`:`<img loading="lazy" decoding="async" src="${e(i.img)}" alt="${e(i.title)}">`}<div class="cb"><h3>${e(i.title)}</h3><div class="ed">${e(i.edition||"")}</div>${i.price?`<div class="pr">${e(i.price)} <span>at listing</span></div>`:""}<a class="view" href="${e(i.url)}" target="_blank" rel="noopener">View on Mallow ↗</a></div></div>`).join("");
   document.querySelectorAll("#coll-kinds button").forEach(b => b.onclick = () => renderCollections(b.dataset.kind));
+  document.querySelectorAll("#coll-grid video").forEach(v => v.addEventListener("play", () => document.querySelectorAll("#coll-grid video").forEach(o => { if (o !== v) o.pause(); })));
 }
 renderCollections("nfts");
 </script>
