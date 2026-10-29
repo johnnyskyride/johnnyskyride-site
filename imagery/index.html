@@ -556,6 +556,7 @@
 .sf-sub{color:#71767b;font-size:13px;margin-top:2px}
 .sf-price{font-weight:800;font-size:18px;white-space:nowrap}
 .sf-price s{color:#71767b;font-weight:400;font-size:13px;margin-left:4px}
+.sf-sale{display:inline-block;margin:2px 0 4px;padding:6px 12px;border-radius:999px;background:rgba(255,79,163,.14);border:1px solid #ff4fa3;color:#ff4fa3;font-size:13px;font-weight:700;text-decoration:none}
 .sf-list{color:#a8adb2;margin:8px 0 12px;padding-left:18px;font-size:14px;line-height:1.55;columns:2;column-gap:18px}
 @media (max-width:480px){.sf-list{columns:1}}
 .sf-btns{display:flex;gap:8px;flex-wrap:wrap}
@@ -867,6 +868,7 @@ no one × nothing × nuh uh</div>
               <div><b class="sf-title">SkyForge</b><div class="sf-sub">VST3 instrument for Windows · by SoSkyride</div></div>
               <div class="sf-price">$26 <s>$29 on itch.io</s></div>
             </div>
+            <a class="sf-sale" id="sf-sale" href="https://johnnyskyride.itch.io" target="_blank" rel="noopener">🔥 Sale on itch.io through 11/4: 54% off the full itch.io price</a>
             <p>An analog-style instrument for Ableton Live. Put it on a MIDI track, arm, and play. If all you've got is the computer keyboard, that still writes the clip.</p>
             <p>The Kind row (Earth, Water, Fire, Wind) changes the voice, not the skin. Halloween, Waters, and Aether sit on top. Ear Wyrm records what you played and cuts a clip from it, dragon and all. Bounce a WAV if you want the audio.</p>
             <ul class="sf-list">
@@ -3050,6 +3052,8 @@ function restoreReturnTo(){
 })();
 
 (function skyforgeStore(){
+  /* itch.io sale tag: auto-hides after 6:00 AM Central 11/4/2026 (11:00 UTC). Remove the #sf-sale element and this line afterward. */
+  const sale = document.getElementById("sf-sale"); if (sale && Date.now() >= Date.UTC(2026, 10, 4, 11, 0, 0)) sale.remove();
   document.querySelectorAll(".sf-thumbs button").forEach((b) => b.addEventListener("click", () => {
     document.getElementById("sf-hero").src = b.dataset.src;
     document.querySelectorAll(".sf-thumbs button").forEach((x) => x.classList.toggle("on", x === b));
