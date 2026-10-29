@@ -271,6 +271,8 @@
   .c-actions { margin-top: 8px !important; }
   .comment { padding: 12px 0 !important; }
   .post .body + .post-media, .post .body ~ .post-media { margin-top: 12px; }
+  a.ulink { color: #ff4fa3; text-decoration: underline; text-underline-offset: 2px; word-break: break-all; }
+  a.ulink:hover { color: #ff7cbb; }
   a.tag { color: #ff4fa3; text-decoration: none; }
   a.tag:hover { text-decoration: underline; }
   .feed-tools { scroll-margin-top: 56px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
@@ -2762,7 +2764,16 @@ function formatText(text){
   s = fmtApply(s, (k, t) => k === "bi" ? `<strong><em>${t}</em></strong>` : k === "b" ? `<strong>${t}</strong>` : `<em>${t}</em>`);
   return fmtRestore(s, keep, m => m[0] === "@"
     ? `<span class="mention" onclick="openMember('${m.slice(1)}')">${m}</span>`
-    : m[0] === "#" ? `<a class="tag" href="/#tag-${encodeURIComponent(m.slice(1).toLowerCase())}" onclick="event.stopPropagation()">${m}</a>` : m);
+    : m[0] === "#" ? `<a class="tag" href="/#tag-${encodeURIComponent(m.slice(1).toLowerCase())}" onclick="event.stopPropagation()">${m}</a>`
+    : /^https?:/i.test(m) ? fmtLink(m) : m);
+}
+// clickable pink links: trailing punctuation stays outside the link
+function fmtLink(m){
+  const t = m.match(/(?:[.,;:!?)\]]|&quot;|&#39;|&#x27;|&gt;)+$/);
+  const tail = t ? t[0] : "";
+  const url = tail ? m.slice(0, -tail.length) : m;
+  if (!/^https?:\/\/[^\s\/]+/i.test(url)) return m;
+  return `<a class="ulink" href="${url}" target="_blank" rel="noopener noreferrer nofollow" onclick="event.stopPropagation()">${url}</a>${tail}`;
 }
 function stripFormatting(text){
   const keep = [];
