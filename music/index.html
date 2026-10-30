@@ -633,7 +633,7 @@ no one × nothing × nuh uh</div>
           <a href="https://www.mallow.art/u/johnnyskyride?tab=pinned" target="_blank">Mallow</a>
           <a href="https://johnnyskyride.itch.io" target="_blank">Itch.io</a>
         </div>
-        <div class="counts"><div><b>4</b> <span>Solo singles</span></div></div>
+        <div class="counts"><div><b id="solo-count">4</b> <span>Solo singles</span></div></div>
       </div>
       <div class="tabs">
         <button class="active" data-tab="posts">Posts</button>
@@ -2395,6 +2395,8 @@ async function loadReleases(){
   }
   RELEASES_SHOWN = key;
   renderReleases(live, p => signed[p] || "");
+  const sc = document.getElementById("solo-count");   // 4 original singles plus every solo release that is live
+  if (sc) sc.textContent = 4 + live.filter(r => r.section !== "band").length;
 }
 function renderReleases(rows, urlFor){
   rows.slice().reverse().forEach(r => {        // oldest first, each prepended, so the newest ends on top
