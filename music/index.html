@@ -892,6 +892,33 @@ no one × nothing × nuh uh</div>
           </div>
         </div>
 
+        <div class="sf-thanks" id="sm-thanks" hidden>
+          <b>Thanks for buying SkyForge Mobile 🐉</b>
+          <p>Your download link is on its way to the email you used at checkout (check spam if it isn't there in a few minutes). The link works for 7 days. Trouble? Write to johnnyskyride@outlook.com.</p>
+          <button type="button" onclick="this.parentNode.hidden=true" aria-label="Dismiss">✕</button>
+        </div>
+
+        <div class="sf-card" id="skyforge-mobile">
+          <!-- Images go here when ready: <img class="sf-hero" id="sm-hero" src="/assets/skyforge-mobile-1.jpg" alt="..." width="1200" height="661" decoding="async">
+               and optional thumbs: <div class="sf-thumbs" data-hero="sm-hero"><button type="button" class="on" data-src="..."><img src="..." alt="..."></button>...</div> -->
+          <div class="sf-body">
+            <div class="sf-head">
+              <div><b class="sf-title">SkyForge Mobile</b><div class="sf-sub">Android app · by SoSkyride</div></div>
+              <div class="sf-price" id="sm-price">$6.69 <s>$9.99</s></div>
+            </div>
+            <span class="sf-sale" id="sm-sale">🔥 33% off through 11/4</span>
+            <p>SkyForge on your phone. A separate purchase from the Windows VST3 above: this one is the Android app.</p>
+            <ul class="sf-list">
+              <li>Android 10 or newer</li>
+              <li>Installs as an APK (version 2.12.13)</li>
+            </ul>
+            <div class="sf-btns">
+              <a class="sf-buy" id="sm-buy" href="https://buy.stripe.com/3cI5kF9ho7Bu4Gu0iM4ow0g">Buy $6.69</a>
+            </div>
+            <p class="sf-fine">Instant download link by email after checkout (works for 7 days). Android only. It's an APK you install yourself: open it on your phone and allow installs from that source when Android asks. Sales are final; if it won't install or run on Android 10 or newer, write in.</p>
+          </div>
+        </div>
+
         <div style="margin-top:12px;padding:14px;border:1px solid #2f3336;border-radius:12px;opacity:.7">
           <b>Merch</b>
           <p style="color:#71767b;margin:6px 0">Print-on-demand via Printful. Coming once traffic supports it.</p>
@@ -3069,12 +3096,21 @@ function restoreReturnTo(){
 (function skyforgeStore(){
   /* itch.io sale tag: auto-hides after 6:00 AM Central 11/4/2026 (11:00 UTC). Remove the #sf-sale element and this line afterward. */
   const sale = document.getElementById("sf-sale"); if (sale && Date.now() >= Date.UTC(2026, 10, 4, 11, 0, 0)) sale.remove();
-  document.querySelectorAll(".sf-thumbs button").forEach((b) => b.addEventListener("click", () => {
-    document.getElementById("sf-hero").src = b.dataset.src;
-    document.querySelectorAll(".sf-thumbs button").forEach((x) => x.classList.toggle("on", x === b));
-  }));
-  if (new URLSearchParams(location.search).get("thanks") === "skyforge") {
-    const n = document.getElementById("sf-thanks");
+  document.querySelectorAll(".sf-thumbs").forEach((strip) => strip.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
+    const hero = document.getElementById(strip.dataset.hero || "sf-hero"); if (hero) hero.src = b.dataset.src;
+    strip.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+  })));
+  /* SkyForge Mobile launch sale: after 6:00 AM Central 11/4/2026 (11:00 UTC) switch to $9.99 + the regular link.
+     After the sale, delete #sm-sale, set #sm-price to "$9.99", #sm-buy to the regular link/"Buy $9.99", and delete this block. */
+  if (Date.now() >= Date.UTC(2026, 10, 4, 11, 0, 0)) {
+    const p = document.getElementById("sm-price"), b = document.getElementById("sm-buy"), t = document.getElementById("sm-sale");
+    if (p) p.textContent = "$9.99";
+    if (b) { b.href = "https://buy.stripe.com/bJebJ3fFM5tm4Gu1mQ4ow0f"; b.textContent = "Buy $9.99"; }
+    if (t) t.remove();
+  }
+  const thanks = new URLSearchParams(location.search).get("thanks");
+  if (thanks === "skyforge" || thanks === "skyforge-mobile") {
+    const n = document.getElementById(thanks === "skyforge" ? "sf-thanks" : "sm-thanks");
     if (n) { n.hidden = false; if (typeof show === "function") show("store", { history: "none", noScroll: true }); }
   }
 })();
