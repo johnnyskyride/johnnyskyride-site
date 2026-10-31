@@ -87,6 +87,28 @@
  }
 }
 </script>
+<script type="application/json" id="jsr-products">
+{
+ "skyforge": {
+  "title": "SkyForge · Store · Johnny Skyride",
+  "description": "SkyForge by SoSkyride: an analog-style VST3 instrument for Ableton Live (Windows). Free demo.",
+  "image": "/assets/og-skyforge.jpg",
+  "alt": "SkyForge VST3 instrument by SoSkyride"
+ },
+ "skyforge-mobile": {
+  "title": "SkyForge Mobile · Store · Johnny Skyride",
+  "description": "SkyForge Mobile · Android app by SoSkyride. Keys or glide pad, Forge and Rack skins, Ear Wyrm, bounce to your favorite mobile DAW.",
+  "image": "/assets/og-skyforge-mobile.jpg",
+  "alt": "SkyForge Mobile Android app by SoSkyride"
+ },
+ "sessions": {
+  "title": "Sessions · Store · Johnny Skyride",
+  "description": "1:1 Chats, Talks & Spiritual Consultations. Shoot-The-Shit $33 · Involved $111 · Deep $222",
+  "image": "/assets/og-sessions.jpg",
+  "alt": "1:1 Chats, Talks & Spiritual Consultations — Shoot-The-Shit $33 · Involved $111 · Deep $222"
+ }
+}
+</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%90%87%3C/text%3E%3C/svg%3E">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
@@ -576,6 +598,18 @@
 .sf-thanks{position:relative;margin-top:12px;padding:12px 40px 12px 14px;border:1px solid #635bff;background:rgba(99,91,255,.12);border-radius:12px}
 .sf-thanks p{color:#c9ccd0;margin:6px 0 0;font-size:14px;line-height:1.45}
 .sf-thanks button{position:absolute;top:8px;right:8px;background:none;border:0;color:#71767b;font-size:16px;cursor:pointer}
+/* Store tiles + product pages (/store/<slug>/). List view hides .sf-more; #store.pv shows one product. */
+.st-item{cursor:pointer;transition:border-color .15s,background .15s}
+.st-item:hover{border-color:#536471;background:rgba(255,255,255,.02)}
+.st-item:focus-visible{outline:2px solid #ff4fa3;outline-offset:2px}
+#store:not(.pv) .sf-more{display:none}
+#store.pv .st-item{cursor:default;background:none}
+#store.pv .st-item:not(.pv-on),#store.pv .st-list-only{display:none}
+.st-back{display:none;color:#ff4fa3;text-decoration:none;font-weight:700;margin:0 0 4px}
+#store.pv .st-back{display:inline-block}
+.st-share{flex:0 0 auto;width:32px;height:32px;border-radius:999px;border:1px solid #2f3336;background:none;color:#e7e9ea;font-size:15px;cursor:pointer;line-height:1}
+.st-share:hover{background:#16181c;border-color:#ff4fa3;color:#ff4fa3}
+.st-right{display:flex;align-items:center;gap:10px}
 </style>
 </head>
 <body>
@@ -845,14 +879,16 @@ no one × nothing × nuh uh</div>
     <section class="page on" id="store">
       <div class="topbar">Store</div>
       <div style="padding:16px">
-        <h2 style="margin:0 0 8px">Store</h2>
-        <p style="color:#71767b">Merch, tools, and other goods. Music downloads live on the Music page.</p>
+        <a class="st-back" href="/store/" onclick="openProduct(null);return false;">← Store</a>
+        <h2 class="st-list-only" style="margin:0 0 8px">Store</h2>
+        <p class="st-list-only" style="color:#71767b">Merch, tools, and other goods. Music downloads live on the Music page.</p>
 
 
 
-        <div style="margin-top:12px;padding:14px;border:1px solid #2f3336;border-radius:12px">
-          <b>Sessions</b>
+        <div class="st-item" data-product="sessions" style="margin-top:12px;padding:14px;border:1px solid #2f3336;border-radius:12px">
+          <div class="sf-head"><b class="sf-title">Sessions</b><button type="button" class="st-share" onclick="shareProduct('sessions')" aria-label="Share Sessions" title="Share">↗</button></div>
           <p style="color:#71767b;margin:6px 0">Shoot-The-Shit $33 · Involved $111 · Deep $222</p>
+          <p class="sf-more" style="color:#a8adb2;margin:8px 0 12px;line-height:1.45">1:1 chats, talks &amp; spiritual consultations. Private sessions: you bring the question, we sit with it. Pick a tier and send a request; Johnny replies by email to set a time and send the payment link.</p>
           <button onclick="show('sessions')" style="background:#ff6bb5;color:#111;border:0;padding:8px 14px;border-radius:999px;font-weight:800;cursor:pointer">Book a session</button>
         </div>
 
@@ -862,9 +898,9 @@ no one × nothing × nuh uh</div>
           <button type="button" onclick="this.parentNode.hidden=true" aria-label="Dismiss">✕</button>
         </div>
 
-        <div class="sf-card" id="skyforge">
+        <div class="sf-card st-item" id="skyforge" data-product="skyforge">
           <img class="sf-hero" id="sf-hero" src="/assets/skyforge-halloween.jpg" alt="SkyForge instrument window over a Halloween scene with carved dragons and pumpkins" width="1200" height="655" decoding="async">
-          <div class="sf-thumbs">
+          <div class="sf-thumbs sf-more">
             <button type="button" class="on" data-src="/assets/skyforge-halloween.jpg"><img loading="lazy" decoding="async" src="/assets/skyforge-halloween.jpg" alt="SkyForge Halloween cover"></button>
             <button type="button" data-src="/assets/skyforge-cover.jpg"><img loading="lazy" decoding="async" src="/assets/skyforge-cover.jpg" alt="SkyForge cover"></button>
             <button type="button" data-src="/assets/skyforge-shot-1.jpg"><img loading="lazy" decoding="async" src="/assets/skyforge-shot-1.jpg" alt="SkyForge in Ableton Live"></button>
@@ -876,12 +912,12 @@ no one × nothing × nuh uh</div>
           <div class="sf-body">
             <div class="sf-head">
               <div><b class="sf-title">SkyForge</b><div class="sf-sub">VST3 instrument for Windows · by SoSkyride</div></div>
-              <div class="sf-price">$26 <s>$29 on itch.io</s></div>
+              <div class="st-right"><div class="sf-price">$26 <s>$29 on itch.io</s></div><button type="button" class="st-share" onclick="shareProduct('skyforge')" aria-label="Share SkyForge" title="Share">↗</button></div>
             </div>
             <a class="sf-sale" id="sf-sale" href="https://johnnyskyride.itch.io" target="_blank" rel="noopener">🔥 Sale on itch.io through 11/4: 54% off the full itch.io price</a>
-            <p>An analog-style instrument for Ableton Live. Put it on a MIDI track, arm, and play. If all you've got is the computer keyboard, that still writes the clip.</p>
-            <p>The Kind row (Earth, Water, Fire, Wind) changes the voice, not the skin. Halloween, Waters, and Aether sit on top. Ear Wyrm records what you played and cuts a clip from it, dragon and all. Bounce a WAV if you want the audio.</p>
-            <ul class="sf-list">
+            <p class="sf-more">An analog-style instrument for Ableton Live. Put it on a MIDI track, arm, and play. If all you've got is the computer keyboard, that still writes the clip.</p>
+            <p class="sf-more">The Kind row (Earth, Water, Fire, Wind) changes the voice, not the skin. Halloween, Waters, and Aether sit on top. Ear Wyrm records what you played and cuts a clip from it, dragon and all. Bounce a WAV if you want the audio.</p>
+            <ul class="sf-list sf-more">
               <li>Windows VST3 (64-bit)</li>
               <li>Analog-style synth, not a sample pack</li>
               <li>2 oscillators, filter, ADSR, unison</li>
@@ -889,12 +925,13 @@ no one × nothing × nuh uh</div>
               <li>Computer-keyboard MIDI into Live</li>
               <li>Ear Wyrm clips, bounce, MIDI dump</li>
               <li>Forge + Rack skins, user presets</li>
+              <li>SkyForge Mobile (Android app, APK) included with your purchase</li>
             </ul>
             <div class="sf-btns">
               <a class="sf-buy" href="https://buy.stripe.com/eVq7sNctAdZS3Cqc1u4ow0a">Buy $26</a>
               <a class="sf-demo" href="/assets/skyforge-demo.zip" download="skyforge-demo.zip">Free demo</a>
             </div>
-            <p class="sf-fine">Instant download link by email after checkout. The free demo is the browser version: unzip and open index.html. Install: unzip into C:\Program Files\Common Files\VST3\, then in Live turn on VST3 system folders and Rescan. Sales are final; if it won't load in a VST3 host on Windows 10 or 11 (64-bit), write in and we fix the build.</p>
+            <p class="sf-fine sf-more">Instant download link by email after checkout. The free demo is the browser version: unzip and open index.html. Install: unzip into C:\Program Files\Common Files\VST3\, then in Live turn on VST3 system folders and Rescan. Sales are final; if it won't load in a VST3 host on Windows 10 or 11 (64-bit), write in and we fix the build. SkyForge Mobile (Android app, APK) is included: it arrives in the same download email. Needs Android 10 or newer; install steps are on the <a href="/store/skyforge-mobile/" onclick="openProduct('skyforge-mobile');return false;">SkyForge Mobile page</a>.</p>
           </div>
         </div>
 
@@ -904,9 +941,9 @@ no one × nothing × nuh uh</div>
           <button type="button" onclick="this.parentNode.hidden=true" aria-label="Dismiss">✕</button>
         </div>
 
-        <div class="sf-card" id="skyforge-mobile">
+        <div class="sf-card st-item" id="skyforge-mobile" data-product="skyforge-mobile">
           <img class="sf-hero" id="sm-hero" src="/assets/skyforge-mobile-1.jpg" alt="SkyForge Mobile Forge skin with the keyboard, scope and dragon display" width="2340" height="1080" decoding="async">
-          <div class="sf-thumbs" data-hero="sm-hero">
+          <div class="sf-thumbs sf-more" data-hero="sm-hero">
             <button type="button" class="on" data-src="/assets/skyforge-mobile-1.jpg"><img loading="lazy" decoding="async" src="/assets/skyforge-mobile-1.jpg" alt="SkyForge Mobile Forge skin with the keyboard, scope and dragon display"></button>
             <button type="button" data-src="/assets/skyforge-mobile-2.jpg"><img loading="lazy" decoding="async" src="/assets/skyforge-mobile-2.jpg" alt="SkyForge Mobile with the Waters and Halloween knobs turned up"></button>
             <button type="button" data-src="/assets/skyforge-mobile-3.jpg"><img loading="lazy" decoding="async" src="/assets/skyforge-mobile-3.jpg" alt="SkyForge Mobile Pad view with the Sine wave selected"></button>
@@ -914,7 +951,7 @@ no one × nothing × nuh uh</div>
             <button type="button" data-src="/assets/skyforge-mobile-5.jpg"><img loading="lazy" decoding="async" src="/assets/skyforge-mobile-5.jpg" alt="SkyForge Mobile Rack skin in green with the Kind row"></button>
             <button type="button" data-src="/assets/skyforge-mobile-6.jpg"><img loading="lazy" decoding="async" src="/assets/skyforge-mobile-6.jpg" alt="SkyForge Mobile Rack skin with Ear Wyrm processing"></button>
           </div>
-          <figure class="sm-video">
+          <figure class="sm-video sf-more">
             <figcaption>Watch it in action</figcaption>
             <video controls playsinline preload="none" poster="/assets/skyforge-mobile-demo-poster.jpg" width="960" height="442"><source src="/assets/skyforge-mobile-demo.mp4" type="video/mp4"></video>
             <p class="sf-fine">Glide pad on the Rack skin, Ear Wyrm turning a take into a Sigil Wyrm, then over to the Forge skin on the keys.</p>
@@ -922,11 +959,11 @@ no one × nothing × nuh uh</div>
           <div class="sf-body">
             <div class="sf-head">
               <div><b class="sf-title">SkyForge Mobile</b><div class="sf-sub">Android app · by SoSkyride</div></div>
-              <div class="sf-price" id="sm-price">$6.69 <s>$9.99</s></div>
+              <div class="st-right"><div class="sf-price" id="sm-price">$6.69 <s>$9.99</s></div><button type="button" class="st-share" onclick="shareProduct('skyforge-mobile')" aria-label="Share SkyForge Mobile" title="Share">↗</button></div>
             </div>
             <span class="sf-sale" id="sm-sale">🔥 33% off through 11/4</span>
-            <p>SkyForge on your phone. A separate purchase from the Windows VST3 above: this one is the Android app.</p>
-            <ul class="sf-list">
+            <p class="sf-more">SkyForge on your phone. A separate purchase from the Windows VST3 above: this one is the Android app.</p>
+            <ul class="sf-list sf-more">
               <li>Android 10 or newer</li>
               <li>Installs as an APK (version 2.12.13)</li>
               <li>Forge and Rack skins, presets and Ear Wyrm</li>
@@ -937,8 +974,8 @@ no one × nothing × nuh uh</div>
             <div class="sf-btns">
               <a class="sf-buy" id="sm-buy" href="https://buy.stripe.com/3cI5kF9ho7Bu4Gu0iM4ow0g">Buy $6.69</a>
             </div>
-            <p class="sf-fine">Instant download link by email after checkout (works for 7 days). Android only for now.</p>
-            <ol class="sf-fine sm-steps">
+            <p class="sf-fine sf-more">Instant download link by email after checkout (works for 7 days). Android only for now.</p>
+            <ol class="sf-fine sm-steps sf-more">
               <li>After checkout, open the download email on your Android phone (Android 10 or newer) and tap the download link within 7 days.</li>
               <li>Download SkyForge-Mobile.apk.</li>
               <li>Open the file from your browser's downloads or the Files app.</li>
@@ -946,20 +983,20 @@ no one × nothing × nuh uh</div>
               <li>Tap Install, then Open.</li>
               <li>After installing you can turn "Allow from this source" back off.</li>
             </ol>
-            <p class="sf-fine">If Play Protect shows a warning, choose More details, then Install anyway, since the app isn't from the Play Store yet. Won't install? Reply to the download email. Sales are final; if it won't install or run on Android 10 or newer, write in.</p>
+            <p class="sf-fine sf-more">If Play Protect shows a warning, choose More details, then Install anyway, since the app isn't from the Play Store yet. Won't install? Reply to the download email. Sales are final; if it won't install or run on Android 10 or newer, write in.</p>
           </div>
         </div>
 
-        <div style="margin-top:12px;padding:14px;border:1px solid #2f3336;border-radius:12px;opacity:.7">
+        <div class="st-list-only" style="margin-top:12px;padding:14px;border:1px solid #2f3336;border-radius:12px;opacity:.7">
           <b>Merch</b>
           <p style="color:#71767b;margin:6px 0">Print-on-demand via Printful. Coming once traffic supports it.</p>
         </div>
 
-        <div class="form" style="margin-top:16px">
+        <div class="form st-list-only" style="margin-top:16px">
           <input id="st-email" placeholder="Email for drops and exclusives">
           <button onclick="notify()">Join the list</button>
         </div>
-        <div class="note" id="st-msg"></div>
+        <div class="note st-list-only" id="st-msg"></div>
       </div>
     </section>
   </main>
@@ -1604,6 +1641,7 @@ function show(id, opts){
       try { history[mode === "replace" ? "replaceState" : "pushState"]({ page: id }, "", url); } catch {}
     }
   }
+  if (id === "store") { const st = document.getElementById("store"); st.classList.remove("pv"); st.querySelectorAll(".pv-on").forEach(e => e.classList.remove("pv-on")); }
   if (id === "members") renderMembers();
   if (!opts.noScroll) window.scrollTo(0,0);
 }
@@ -1612,6 +1650,35 @@ window.addEventListener("popstate", () => {
   const id = pageFromPath(location.pathname);
   const cur = document.querySelector(".page.on");
   if (!cur || cur.id !== id) show(id, { history: "none" });
+  if (id === "store") openProduct(productFromPath(location.pathname), { history: "none" });
+});
+// ---- Store product pages: /store/<slug>/ (stubs with their own share card built by tools/build-pages.py from #jsr-products).
+const PRODUCTS = (() => { try { return JSON.parse(document.getElementById("jsr-products").textContent); } catch { return {}; } })();
+function productFromPath(pathname){
+  const parts = String(pathname || "").split("/").filter(Boolean);
+  return parts[0] === "store" && PRODUCTS[parts[1]] ? parts[1] : null;
+}
+// slug = product to show alone, or null for the Store list. opts.history: "push" (default), "replace", "none".
+function openProduct(slug, opts){
+  opts = opts || {};
+  const st = document.getElementById("store"); if (!st) return;
+  if (slug && !PRODUCTS[slug]) slug = null;
+  if (!st.classList.contains("on")) show("store", { history: "none", noScroll: true });
+  st.classList.toggle("pv", !!slug);
+  st.querySelectorAll(".st-item").forEach(el => el.classList.toggle("pv-on", el.dataset.product === slug));
+  document.title = slug ? PRODUCTS[slug].title : (PAGES.store && PAGES.store.title) || document.title;
+  const mode = opts.history || "push", url = slug ? "/store/" + slug + "/" : "/store/";
+  if (mode !== "none" && location.pathname !== url) { try { history[mode === "replace" ? "replaceState" : "pushState"]({ page: "store", product: slug }, "", url); } catch {} }
+  if (!opts.noScroll) window.scrollTo(0, 0);
+}
+function shareProduct(slug){ shareLink(SHARE_ORIGIN + "/store/" + slug + "/"); }
+// Click anywhere on a Store tile opens its page, except links, buttons, thumbnails, video and form fields.
+document.querySelectorAll("#store .st-item").forEach(el => {
+  el.setAttribute("tabindex", "0"); el.setAttribute("role", "link");
+  el.setAttribute("aria-label", (el.querySelector(".sf-title")?.textContent || el.dataset.product) + " — open product page");
+  const go = () => { if (!document.getElementById("store").classList.contains("pv")) openProduct(el.dataset.product); };
+  el.addEventListener("click", e => { if (e.target.closest("a,button,video,input,select,textarea,label,.sf-thumbs")) return; if (getSelection && String(getSelection())) return; go(); });
+  el.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target === el) { e.preventDefault(); go(); } });
 });
 
 function pick(name){ document.getElementById("s-pkg").value = name; }
@@ -3118,7 +3185,9 @@ function restoreReturnTo(){
 (function initSection(){
   const id = pageFromPath(location.pathname);
   show(id, { history: "none", noScroll: true });
-  const want = pagePath(id);
+  const prod = id === "store" ? productFromPath(location.pathname) : null;
+  if (prod) openProduct(prod, { history: "none", noScroll: true });
+  const want = prod ? "/store/" + prod + "/" : pagePath(id);
   if (location.pathname !== want && !/[?&](code|token_hash)=/.test(location.search)) {
     try { history.replaceState({ page: id }, "", want + location.search + location.hash); } catch {}
   }

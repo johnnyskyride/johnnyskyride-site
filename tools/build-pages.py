@@ -7,7 +7,7 @@ run this script from the repo root (or anywhere):
     python3 tools/build-pages.py
 
 then commit index.html AND every generated file (articles/, music/, imagery/,
-sessions/, members/, store/ index.html, and 404.html) together.
+sessions/, members/, store/ and store/<product>/ index.html, and 404.html) together.
 
 What it does:
   * Reads the section config from the <script type="application/json" id="jsr-pages">
@@ -118,6 +118,17 @@ def main():
         os.makedirs(os.path.join(ROOT, slug), exist_ok=True)
         open(os.path.join(ROOT, slug, "index.html"), "w", encoding="utf-8").write(doc)
         written.append(f"{slug}/index.html")
+    # Store product pages (/store/<slug>/) from #jsr-products: the Store section with that product's meta;
+    # the page's JS reads the path and shows the product alone.
+    m2 = re.search(r'<script type="application/json" id="jsr-products">(.*?)</script>', src, re.S)
+    store_doc = open(os.path.join(ROOT, pages["store"]["path"].strip("/"), "index.html"), encoding="utf-8").read()
+    for slug, p in (json.loads(m2.group(1)) if m2 else {}).items():
+        if not re.fullmatch(r"[a-z0-9-]+", slug): sys.exit(f"bad product slug: {slug}")
+        p = dict(p, path=f"/store/{slug}/")
+        doc = META_RE.sub(lambda _: meta_block("store", p), store_doc, count=1)
+        os.makedirs(os.path.join(ROOT, "store", slug), exist_ok=True)
+        open(os.path.join(ROOT, "store", slug, "index.html"), "w", encoding="utf-8").write(doc)
+        written.append(f"store/{slug}/index.html")
     paths = json.dumps([p["path"] for k, p in pages.items() if k != "home"])
     open(os.path.join(ROOT, "404.html"), "w", encoding="utf-8").write(NOT_FOUND % paths)
     written.append("404.html")
