@@ -65,6 +65,8 @@ Store rows (`store_products`, column `item`): eight $2 singles, `skyforge`, `sky
 3. Upload the new file with the **exact same name** `SkyForge-Mobile.apk`, choosing replace/overwrite (or delete the old one, then upload).
 4. Edit `index.html` on GitHub: find `Installs as an APK (version` and change the version number.
 5. Run the build (Recipe 2a, point 4). Both SkyForge Mobile and SkyForge buyers now get the new APK.
+6. **Tell the in-app updater about it** (otherwise phones never see the new build): Supabase → SQL Editor, run the "Publish a new app release" snippet under *Update codes* below with the new version name and versionCode.
+7. The public `skyforge-feed` `version.json` is separate. Until it is retired, update it there too if the app still reads it.
 
 ### Recipe 3b: swap the SkyForge VST3 zip
 Same as 3a, folder `skyforge`, file name `SkyForge-VST3.zip`.
@@ -112,6 +114,38 @@ returning 'https://johnnyskyride.com/dl/?t=' || token as link;
 Copy the `link` it returns and email it. It works once and expires in 7 days. To see the file paths a product uses: `select item, file_path, files from store_products;`
 
 Limit: single-use stops a forwarded email from working, but a buyer who downloads once can still share the file itself. Nothing on a website can prevent that.
+
+### Update codes (SkyForge Mobile in-app updates)
+
+Every SkyForge Mobile or SkyForge purchase email includes one personal update code like `SF-7K2M-9QXD` (table `app_licenses`, one per order). The app sends it to the `app-update` function, which checks it and hands back a 5-minute download link to the private APK. Each code allows 25 updates by default. A code can still be shared; the cap and turning a code off are the controls. Run these in Supabase → SQL Editor.
+
+Look up a buyer's code (to re-send it if they lost it):
+```sql
+select code, active, updates_used, max_updates, last_used_at, created_at
+from public.app_licenses where buyer_email ilike 'buyer@example.com';
+```
+
+Make a code for someone by hand (e.g. a gift or a manual sale):
+```sql
+select public.app_license_issue('manual-' || gen_random_uuid(), 'buyer@example.com', 'skyforge-mobile') as code;
+```
+
+Turn a code off (leaked or refunded), or back on:
+```sql
+update public.app_licenses set active = false, notes = 'leaked' where code = 'SF-XXXX-XXXX';
+```
+
+Give a code more updates:
+```sql
+update public.app_licenses set max_updates = max_updates + 25 where code = 'SF-XXXX-XXXX';
+```
+
+Publish a new app release (after uploading the APK, Recipe 3a). Use the app's real version name and versionCode:
+```sql
+insert into public.app_releases (version, code, file_path, notes)
+values ('2.12.25', 21225, 'skyforge-mobile/SkyForge-Mobile.apk', 'What changed, one line.');
+```
+Phones with a lower versionCode get the update next time they check. The app always serves the newest active row; to roll back, `update public.app_releases set active = false where code = 21225;` and put the old APK back. (Optional: upload to a versioned path such as `skyforge-mobile/SkyForge-2.12.25.apk` and use that as `file_path`, so older files stay available.)
 
 ## 4. Nov 4, 2026 sale cleanup (6:00 AM Central)
 
