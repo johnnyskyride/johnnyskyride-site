@@ -117,7 +117,7 @@ Limit: single-use stops a forwarded email from working, but a buyer who download
 
 ### Update codes (SkyForge Mobile in-app updates)
 
-Every SkyForge Mobile or SkyForge purchase email includes one personal update code like `SF-7K2M-9QXD` (table `app_licenses`, one per order). The app sends it to the `app-update` function. The app's background checks are free. Only tapping **Update** uses one update and gets a 5-minute download link to the private APK. Each code allows 25 updates by default, and at most 5 downloads per hour. A code can still be shared; the cap and turning a code off are the controls. Run these in Supabase → SQL Editor.
+Every SkyForge Mobile or SkyForge purchase email includes one personal update code like `SF-7K2M-9QXD` (table `app_licenses`, one per order). The app sends it to the `app-update` function. The app's background checks are free. Only tapping **Update** uses one update and gets a 5-minute download link to the private APK. Each code allows 1000 updates in its lifetime, with at most 5 downloads per hour and 20 per day, so real buyers never get locked out. A code can still be shared. If one downloads far more than normal (check `updates_used` and `last_used_at`), turn it off and make the buyer a new one with the snippets below. Run these in Supabase → SQL Editor.
 
 Look up a buyer's code (to re-send it if they lost it):
 ```sql
@@ -137,7 +137,7 @@ update public.app_licenses set active = false, notes = 'leaked' where code = 'SF
 
 Give a code more updates:
 ```sql
-update public.app_licenses set max_updates = max_updates + 25 where code = 'SF-XXXX-XXXX';
+update public.app_licenses set max_updates = max_updates + 1000 where code = 'SF-XXXX-XXXX';
 ```
 
 Publish a new app release (after uploading the APK, Recipe 3a). Use the app's real version name and versionCode:
