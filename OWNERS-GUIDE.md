@@ -54,7 +54,7 @@ The site owner is **johnnyskyride@outlook.com**, and that must stay the **only**
 
 How a sale works:
 1. Buyer clicks Buy → Stripe Payment Link → pays (tax included).
-2. Stripe calls `store-fulfill`. It checks Stripe's signature, finds the `store_products` row whose `payment_link` matches, records the sale in `orders`, and emails the buyer through Resend with download links that **expire in 7 days**. Files come from the `store-private` bucket.
+2. Stripe calls `store-fulfill`. It checks Stripe's signature, finds the `store_products` row whose `payment_link` matches, records the sale in `orders`, and emails the buyer through Resend with download links that **work once and expire in 7 days**. Files come from the `store-private` bucket. Each link looks like `https://johnnyskyride.com/dl/?t=…`; the page there (file `dl/index.html`) asks the `dl` edge function to use up the link and hand over a 5-minute file link. Opening the page doesn't use the link up; only tapping Download does. Links live in the `download_tokens` table (`used_at` shows when one was used).
 3. Buyer is sent back to the site with a thank-you banner.
 
 Store rows (`store_products`, column `item`): eight $2 singles, `skyforge`, `skyforge-mobile`, `skyforge-mobile-sale`. The `skyforge` row delivers **two files**: `skyforge/SkyForge-VST3.zip` and `skyforge-mobile/SkyForge-Mobile.apk` (the Android app is included). Music singles also get a 320 kbps MP3 when the download is FLAC.
@@ -88,9 +88,30 @@ Stripe → Payment Links → open the link → **Deactivate**. Anyone clicking i
 2. Supabase → `orders` table: find the order by time. `status`, `buyer_emailed_at` and `error` tell you what happened.
 3. Stripe → Developers → Webhooks → store delivery endpoint → recent deliveries: was it sent and did it get 200?
 4. Resend dashboard → Emails/Logs: was it sent or bounced?
-5. Resend: in Stripe's webhook view, click **Resend** on that event. If the order already shows emailed, the function may not send twice (check this). Fallback: Supabase Storage → file → "Get URL"/signed link (7 days) and email it yourself from johnnyskyride@outlook.com.
+5. Resend: in Stripe's webhook view, click **Resend** on that event. If the order already shows emailed, the function may not send twice (check this). Fallback: issue a fresh link (see "Reissue a download link" below) and email it yourself from johnnyskyride@outlook.com.
 
 ---
+
+### Reissue a download link
+
+If a buyer's link was used up or expired, make a new one. Supabase → SQL Editor, paste, change the file path, name and label to the file they need, then Run:
+
+```sql
+insert into public.download_tokens (token, session_id, item, file_path, download_name, label)
+values (
+  replace(replace(rtrim(encode(gen_random_bytes(24), 'base64'), '='), '+', '-'), '/', '_'),
+  'manual',                                   -- or the buyer's checkout session id from `orders`
+  'skyforge-mobile',                          -- item
+  'skyforge-mobile/SkyForge-Mobile.apk',      -- file path in store-private
+  'SkyForge-Mobile.apk',                      -- file name the buyer gets
+  'SkyForge Mobile (Android APK)'             -- button label
+)
+returning 'https://johnnyskyride.com/dl/?t=' || token as link;
+```
+
+Copy the `link` it returns and email it. It works once and expires in 7 days. To see the file paths a product uses: `select item, file_path, files from store_products;`
+
+Limit: single-use stops a forwarded email from working, but a buyer who downloads once can still share the file itself. Nothing on a website can prevent that.
 
 ## 4. Nov 4, 2026 sale cleanup (6:00 AM Central)
 

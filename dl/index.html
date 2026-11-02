@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Your download · Johnny Skyride</title>
+<link rel="icon" href="/favicon-32.png">
+<style>
+body{margin:0;background:#0b0d10;color:#e8eaed;font-family:system-ui,-apple-system,sans-serif}
+.box{max-width:460px;margin:64px auto;padding:28px 24px;text-align:center}
+h1{font-size:22px;margin:0 0 14px}p{color:#9aa0a6;line-height:1.55;margin:0 0 22px}
+button{background:#ff4fa3;color:#fff;border:0;border-radius:10px;padding:14px 24px;font-size:16px;font-weight:600;cursor:pointer}
+button[disabled]{opacity:.6;cursor:default}a{color:#ff4fa3}
+</style>
+</head>
+<body>
+<div class="box">
+<h1 id="h">Checking your link…</h1>
+<p id="m"></p>
+<button id="b" hidden></button>
+</div>
+<script>
+(function(){
+  var API="https://wsrzkxmwufwceqqbstrj.supabase.co/functions/v1/dl";
+  var t=new URLSearchParams(location.search).get("t")||"";
+  var h=document.getElementById("h"),m=document.getElementById("m"),b=document.getElementById("b");
+  function fail(msg){h.textContent="Link used or expired";m.textContent=msg||"This download link has already been used or has expired. Reply to your download email and we'll send a fresh one.";b.hidden=true;}
+  if(history.replaceState)history.replaceState(null,"",location.pathname); // keep the token out of history/share
+  fetch(API+"?t="+encodeURIComponent(t)).then(function(r){return r.json();}).then(function(d){
+    if(!d.ok)return fail(d.error);
+    h.textContent="Your download is ready";
+    m.textContent="This link works once. Tap the button, and keep the file somewhere safe.";
+    b.textContent="Download "+d.label;b.hidden=false;
+    b.onclick=function(){
+      b.disabled=true;b.textContent="Starting download…";
+      fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({t:t})})
+      .then(function(r){return r.json();}).then(function(x){
+        if(!x.ok||!x.url)return fail(x.error);
+        h.textContent="Downloading…";
+        m.innerHTML="Your download should start now. If it doesn't, <a id='again' href='"+x.url.replace(/'/g,"%27")+"'>tap here</a> within 5 minutes.";
+        b.hidden=true;location.href=x.url;
+      }).catch(function(){b.disabled=false;b.textContent="Try again";m.textContent="Network problem. Your link has not been used. Try again.";});
+    };
+  }).catch(function(){h.textContent="Can't reach the download server";m.textContent="Check your connection and reload this page.";});
+})();
+</script>
+</body>
+</html>
