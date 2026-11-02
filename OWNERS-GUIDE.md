@@ -117,7 +117,7 @@ Limit: single-use stops a forwarded email from working, but a buyer who download
 
 ### Update codes (SkyForge Mobile in-app updates)
 
-Every SkyForge Mobile or SkyForge purchase email includes one personal update code like `SF-7K2M-9QXD` (table `app_licenses`, one per order). The app sends it to the `app-update` function, which checks it and hands back a 5-minute download link to the private APK. Each code allows 25 updates by default. A code can still be shared; the cap and turning a code off are the controls. Run these in Supabase → SQL Editor.
+Every SkyForge Mobile or SkyForge purchase email includes one personal update code like `SF-7K2M-9QXD` (table `app_licenses`, one per order). The app sends it to the `app-update` function. The app's background checks are free. Only tapping **Update** uses one update and gets a 5-minute download link to the private APK. Each code allows 25 updates by default, and at most 5 downloads per hour. A code can still be shared; the cap and turning a code off are the controls. Run these in Supabase → SQL Editor.
 
 Look up a buyer's code (to re-send it if they lost it):
 ```sql
