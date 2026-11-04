@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Email notifications · Johnny Skyride</title>
+<link rel="icon" href="/favicon-32.png">
+<style>
+body{margin:0;background:#0b0d10;color:#e8eaed;font-family:system-ui,-apple-system,sans-serif}
+.box{max-width:460px;margin:64px auto;padding:28px 24px;text-align:center}
+h1{font-size:22px;margin:0 0 14px}p{color:#9aa0a6;line-height:1.55;margin:0 0 22px}
+button{background:#ff4fa3;color:#fff;border:0;border-radius:10px;padding:14px 24px;font-size:16px;font-weight:600;cursor:pointer}
+button.alt{background:#a855f7}
+button[disabled]{opacity:.6;cursor:default}a{color:#ff4fa3}
+.home{display:block;margin-top:28px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="box">
+<h1 id="h">Checking your link…</h1>
+<p id="m"></p>
+<button id="b" hidden></button>
+<a class="home" href="/">johnnyskyride.com</a>
+</div>
+<script>
+(function(){
+  var API="https://wsrzkxmwufwceqqbstrj.supabase.co/functions/v1/unsubscribe";
+  var t=new URLSearchParams(location.search).get("t")||"";
+  var h=document.getElementById("h"),m=document.getElementById("m"),b=document.getElementById("b");
+  if(history.replaceState)history.replaceState(null,"",location.pathname); // keep the token out of history/share
+  function call(body){return fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json();});}
+  function bad(){h.textContent="This link doesn't work";m.textContent="It may be incomplete. You can also switch emails off on the Board page when signed in, or reply to any notification email.";b.hidden=true;}
+  function net(){b.disabled=false;m.textContent="Network problem. Nothing changed. Try again.";}
+  function show(on){
+    b.disabled=false;b.hidden=false;
+    if(on){h.textContent="Stop notification emails?";m.textContent="You'll stop getting reply and notification emails from johnnyskyride.com. Purchase and sign-in emails still arrive.";b.className="";b.textContent="Unsubscribe";b.onclick=function(){set(false);};}
+    else{h.textContent="You're unsubscribed";m.textContent="You won't get reply or notification emails anymore. Changed your mind?";b.className="alt";b.textContent="Turn emails back on";b.onclick=function(){set(true);};}
+  }
+  function set(on){b.disabled=true;b.textContent="Saving…";call({t:t,on:on}).then(function(d){if(!d.ok)return bad();show(d.notify_email);if(d.notify_email){h.textContent="Emails are back on";m.textContent="You'll get reply and notification emails again.";b.hidden=true;}}).catch(net);}
+  if(!/^[0-9a-f]{64}$/.test(t))return bad();
+  call({t:t,status:true}).then(function(d){if(!d.ok)return bad();show(d.notify_email);}).catch(function(){h.textContent="No connection";m.textContent="Check your connection and reload this page.";});
+})();
+</script>
+</body>
+</html>

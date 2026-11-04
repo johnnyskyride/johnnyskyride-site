@@ -489,6 +489,17 @@
   body.owner button.owner-only, body.owner .owner-only button { display: inline-block !important; }
   .who-bar { display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid #2f3336; font-size:14px; }
   .who-bar button { background:#16181c; color:#e7e9ea; border:1px solid #2f3336; border-radius:999px; padding:6px 12px; cursor:pointer; font-weight:700; }
+  .np-bar { display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid #2f3336; font-size:14px; }
+  .np-bar[hidden] { display:none; }
+  .np-sw { position:relative; width:40px; height:22px; flex:none; }
+  .np-sw input { opacity:0; width:0; height:0; position:absolute; }
+  .np-sw span { position:absolute; inset:0; background:#2f3336; border-radius:999px; cursor:pointer; transition:background .15s; }
+  .np-sw span:before { content:""; position:absolute; left:3px; top:3px; width:16px; height:16px; border-radius:50%; background:#e7e9ea; transition:transform .15s; }
+  .np-sw input:checked + span { background:#a855f7; }
+  .np-sw input:checked + span:before { transform:translateX(18px); }
+  .np-sw input:focus-visible + span { outline:2px solid var(--accent); outline-offset:2px; }
+  .np-msg { font-size:13px; color:#71767b; margin-left:auto; }
+  .np-msg.ok { color:var(--accent); }
   .modal { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; place-items:center; z-index:50; }
   .modal.on { display:grid; }
   .modal .box { background:#16181c; border:1px solid #2f3336; border-radius:16px; padding:20px; width:min(400px,92vw); display:grid; gap:10px; }
@@ -747,6 +758,11 @@
           <span id="total-count" class="owner-only owner-strict" style="margin-left:8px"></span>
         </span>
         <button class="owner-only owner-strict" onclick="lockOwner()" style="margin-left:auto">Lock</button>
+      </div>
+      <div class="np-bar" id="np-bar" hidden>
+        <label class="np-sw"><input type="checkbox" id="np-toggle" onchange="saveNotifyPref(this.checked)" aria-label="Email me about replies and notifications"><span></span></label>
+        <label for="np-toggle" style="cursor:pointer">Email me about replies and notifications</label>
+        <span class="np-msg" id="np-msg" role="status"></span>
       </div>
       <div class="banner-wrap"><div class="banner" id="banner" style="background-image:url('/assets/banner.jpg')"></div><button class="change-btn owner-only owner-strict" style="right:12px;bottom:12px" onclick="document.getElementById('banner-file').click()">Change banner</button><input id="banner-file" type="file" accept="image/*" style="display:none"></div>
       <div class="profile">
@@ -2386,6 +2402,32 @@ function paintWho(){
   const btn = document.getElementById("who-btn");
   if(u){ label.textContent = u.name + " @" + u.handle; btn.textContent = "Sign out"; btn.onclick = async () => { if (sb) { try { await sb.auth.signOut(); } catch {} } currentSession = null; setOwner(false); localStorage.removeItem("jsr-user"); document.body.classList.remove("bot"); paintWho(); }; if(isBot(u)) document.body.classList.add("bot"); else document.body.classList.remove("bot"); }
   else { label.textContent = "Visitor"; btn.textContent = "Become a member"; btn.onclick = openAuth; }
+  loadNotifyPref();
+}
+// Notification email opt-out (one row per email in notification_prefs; RPCs only touch the signed-in user's own row)
+async function loadNotifyPref(){
+  const bar = document.getElementById("np-bar");
+  if (!bar) return;
+  if (!sb || !currentUser()) { bar.hidden = true; return; }
+  try {
+    const { data, error } = await sb.rpc("my_notify_email");
+    if (error || data === null || data === undefined) { bar.hidden = true; return; }
+    document.getElementById("np-toggle").checked = !!data;
+    document.getElementById("np-msg").textContent = "";
+    bar.hidden = false;
+  } catch { bar.hidden = true; }
+}
+async function saveNotifyPref(on){
+  const t = document.getElementById("np-toggle"), msg = document.getElementById("np-msg");
+  t.disabled = true; msg.className = "np-msg"; msg.textContent = "Saving…";
+  try {
+    const { error } = await sb.rpc("set_my_notify_email", { p_on: !!on });
+    if (error) throw error;
+    msg.className = "np-msg ok"; msg.textContent = on ? "Saved: emails on" : "Saved: emails off";
+  } catch {
+    t.checked = !on; msg.textContent = "Couldn't save. Try again.";
+  }
+  t.disabled = false;
 }
 function openAuth(){ document.getElementById("auth-modal").classList.add("on"); }
 function closeAuth(){ document.getElementById("auth-modal").classList.remove("on"); }

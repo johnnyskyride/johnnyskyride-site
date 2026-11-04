@@ -249,3 +249,17 @@ The Forum is the fourth tab on the Board page (Posts / Replies / Media / **Forum
 **Let members create sub-topics:** in the SQL Editor run `update forum_settings set members_can_create_subtopics = true where id = 1;` (set back to `false` to turn off). Members then see **＋ Add sub-topic** on top-level topics (not Announcements). You can still rename or delete any sub-topic.
 
 **Reply emails (on):** when someone replies to a thread, the thread's author gets one email (trigger `forum_posts_notify` → `queue_notification` → `notify` edge function → Resend, from `notify@johnnyskyride.com`). Subject: "@who replied to your forum thread"; plain text with the reply and a link to `/board/#forum-thread-<id>`. No email for replying to your own thread, none if the author has no email on file, one per reply, nobody else is emailed. Each one is logged in `notifications` (kind `forum_reply`). There is no per-member opt-out or unsubscribe yet (the site's other notification emails don't have one either). To switch reply emails off: `alter table forum_posts disable trigger forum_posts_notify;` (`enable` to turn back on).
+
+## Notification emails: "Email me" switch and unsubscribe
+
+Covers every notification email the `notify` function sends (forum replies, comment replies, comments on posts, @tags). Purchase/delivery emails, download links, update codes and sign-in links are NOT affected.
+
+- **Members:** when signed in, the Board page shows an "Email me about replies and notifications" switch under the sign-in bar. It saves right away.
+- **Unsubscribe link:** every notification email ends with a link like `https://johnnyskyride.com/unsubscribe/?t=<token>`. The page asks them to tap Unsubscribe (opening the link alone changes nothing), then shows "You're unsubscribed" with a "Turn emails back on" button. No login needed. The token is random and doesn't contain the email. Mail apps also get a one-click List-Unsubscribe header.
+- **Where it's stored:** table `notification_prefs` (one row per lowercase email: `notify_email`, `token`). No row = emails on.
+- **When someone is opted out:** the email isn't sent; the row in `notifications` gets `send_status = 'skipped: opted out'`.
+- **See or flip a member's setting** (Supabase → SQL editor):
+  `select * from notification_prefs where email = 'them@example.com';`
+  `insert into notification_prefs(email, notify_email) values ('them@example.com', false) on conflict (email) do update set notify_email = excluded.notify_email;`
+- **Turn ALL notification emails off at once:** Supabase → Edge Functions → `notify` → Secrets: delete `RESEND_API_KEY` is too broad (it's shared), so instead run `update notification_prefs set notify_email = false;` for existing rows, or ask your developer to add a global switch. Rows for new recipients default to on.
+- Pieces: migration `notification_email_prefs`, edge functions `notify` (v7) and `unsubscribe`, page `unsubscribe/index.html` (hand-written, not generated).
