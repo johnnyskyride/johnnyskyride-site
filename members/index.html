@@ -343,6 +343,51 @@
   .heart:hover, .c-heart:hover { color: #a855f7 !important; }
   .heart i, .c-heart i { font-style: normal; }
 
+  /* Forum tab */
+  .forum { display: none; }
+  #board.forum-mode .forum { display: block; }
+  #board.forum-mode #feed, #board.forum-mode .feed-tools, #board.forum-mode #feed-filter, #board.forum-mode .compose,
+  #board.forum-mode .compose-bar, #board.forum-mode #sched-bar, #board.forum-mode #media-preview, #board.forum-mode #sched-list { display: none !important; }
+  .forum { padding: 8px 16px 40px; }
+  .fm-head { padding: 16px 0 12px; }
+  .fm-head h2 { margin: 0 0 6px; font-size: 22px; }
+  .fm-head p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.45; }
+  .fm-crumbs { padding: 12px 0 0; font-size: 14px; color: var(--muted); }
+  .fm-crumbs a, .fm-note a { color: var(--accent); text-decoration: none; }
+  .fm-sec { margin: 20px 0 10px; color: var(--muted); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+  .fm-list { display: grid; gap: 12px; }
+  .fm-topic, .fm-trow { display: block; text-decoration: none; color: var(--text); background: #0b0b0d; border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px; transition: border-color .15s; }
+  .fm-topic:hover, .fm-trow:hover { border-color: var(--accent); }
+  .fm-topic.sub { border-left: 3px solid var(--accent); }
+  .fm-tname { font-weight: 700; font-size: 16px; }
+  .fm-tdesc { color: var(--muted); font-size: 14px; margin-top: 4px; line-height: 1.4; }
+  .fm-meta { color: var(--muted); font-size: 13px; margin-top: 8px; }
+  .fm-badge { font-size: 11px; font-weight: 700; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: middle; }
+  .fm-threads { display: grid; gap: 10px; }
+  .fm-ttitle { font-weight: 700; font-size: 15px; line-height: 1.35; overflow-wrap: anywhere; }
+  .fm-empty, .fm-note { color: var(--muted); text-align: center; padding: 24px 12px; font-size: 15px; }
+  .fm-compose { display: grid; gap: 10px; margin: 18px 0 4px; padding: 14px; border: 1px solid var(--border); border-radius: 16px; background: #0b0b0d; }
+  .fm-compose input, .fm-compose textarea { width: 100%; box-sizing: border-box; background: #000; color: var(--text); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; font: inherit; font-size: 15px; }
+  .fm-compose textarea { resize: vertical; min-height: 80px; }
+  .fm-row { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+  .fm-btn { background: var(--accent); color: #000; border: 0; border-radius: 999px; padding: 9px 18px; font-weight: 700; cursor: pointer; }
+  .fm-ghost { background: none; color: var(--accent); border: 1px solid var(--border); border-radius: 999px; padding: 7px 14px; font-weight: 600; cursor: pointer; }
+  .fm-add { justify-self: start; }
+  .fm-tools { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .fm-post { display: flex; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+  .fm-post .av { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex: none; }
+  .fm-pbody { flex: 1; min-width: 0; }
+  .fm-pbody .who { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .fm-pbody .h { color: var(--muted); font-size: 14px; margin-left: 2px; }
+  .fm-pbody .body { margin-top: 6px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .fm-pbody .actions { display: flex; gap: 22px; margin-top: 10px; color: var(--muted); }
+  .fm-pbody .actions span { cursor: pointer; }
+  .fm-title { margin: 8px 0 0; font-size: 20px; line-height: 1.3; overflow-wrap: anywhere; }
+  .fm-op { padding-top: 18px; }
+  .fm-mod { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .fm-mod button { background: none; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px; cursor: pointer; font-size: 13px; }
+  .fm-mod button:hover { color: var(--accent); border-color: var(--accent); }
+
   .star { display:inline-block; vertical-align:-2px; margin-left:4px; }
   .post-menu { position: relative; margin-left: auto; flex: none; }
   .post-menu > button { background:transparent; border:0; color:#71767b; font-size:18px; cursor:pointer; padding:0 6px; }
@@ -724,6 +769,7 @@ no one × nothing × nuh uh</div>
         <button class="active" data-tab="posts">Posts</button>
         <button data-tab="replies">Replies</button>
         <button data-tab="media">Media</button>
+        <button data-tab="forum">Forum</button>
       </div>
       <div class="compose owner-only">
         <img src="/assets/avatar.jpg" alt="">
@@ -750,6 +796,7 @@ no one × nothing × nuh uh</div>
       </div>
       <div id="feed-filter" class="feed-filter" hidden></div>
       <div id="feed"></div>
+      <div id="forum" class="forum"></div>
     </section>
 
     <!-- ARTICLES -->
@@ -1204,6 +1251,8 @@ document.querySelectorAll(".tabs button").forEach(btn => {
     document.querySelectorAll(".tabs button").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     currentTab = btn.dataset.tab;
+    if (currentTab === "forum") { FORUM.view = "list"; FORUM.id = null; }
+    else if (/^#forum/.test(location.hash)) { try { history.replaceState(history.state, "", location.pathname + location.search); } catch {} }
     renderFeed(); updateMemberCounts();
   });
 });
@@ -1266,6 +1315,8 @@ function feedGo(n){ feedPage = n; renderFeed(); window.scrollTo(0,0); }
 async function renderFeed(){
   const seq = ++feedRenderSeq;           // only the newest render may paint (tabs can't overwrite each other)
   const tab = currentTab;
+  const boardEl = document.getElementById("board"); if (boardEl) boardEl.classList.toggle("forum-mode", tab === "forum");
+  if (tab === "forum") return renderForum();
   const mine = await loadPosts();
   if (seq !== feedRenderSeq) return;
   let all = mine.concat(SEED);
@@ -3197,6 +3248,14 @@ async function handleDeepLink(){
   const tm = h.match(/^tag-(.+)$/);
   if (tm) { setFeedFilter({ tag: tm[1].toLowerCase() }); setTimeout(() => { const f = document.querySelector(".feed-tools"); if (f) f.scrollIntoView({ block: "start" }); }, 400); return; }
   if (feedFilter.tag && !h) { setFeedFilter({}, true); }
+  const fm = h.match(/^forum(?:-(topic|thread)-(\d+))?$/);
+  if (fm) {
+    const board = document.getElementById("board");
+    if (board && !board.classList.contains("on")) { navKeepHash = true; try { show("board"); } finally { navKeepHash = false; } }
+    await openForum(fm[1] || "list", fm[2]);
+    const f = document.getElementById("forum"); if (f) { const r = f.getBoundingClientRect(); if (r.top < 0 || r.top > innerHeight * 0.6) f.scrollIntoView({ block: "start" }); }
+    return;
+  }
   const m = h.match(/^(ac|c)-(.+)$/), pm = h.match(/^post-(.+)$/);
   if (!sb || (!m && !pm)) return;
   if (pm) {
@@ -3227,7 +3286,7 @@ function restoreReturnTo(){
   if (!r) return;
   localStorage.removeItem("jsr-return-to");
   if (!r.path || Date.now() - (r.at || 0) > 3600 * 1000) return;
-  if (location.pathname !== "/" || /^#(c|ac|post)-/.test(location.hash)) return;  // already somewhere specific
+  if (location.pathname !== "/" || /^#((c|ac|post)-|forum)/.test(location.hash)) return;  // already somewhere specific
   const u = new URL(r.path, location.origin);
   const id = pageFromPath(u.pathname);
   try { history.replaceState({ page: id }, "", pagePath(id) + u.search + u.hash); } catch {}
@@ -3268,9 +3327,268 @@ function restoreReturnTo(){
   }
 })();
 if (feedFilter.tag) window.addEventListener("load", () => { const b = document.getElementById("feed-search"); if (b) b.value = "#" + feedFilter.tag; });
-if (/^#(c|ac|post)-/.test(location.hash)) {
+if (/^#((c|ac|post)-|forum)/.test(location.hash)) {
   const go = () => setTimeout(handleDeepLink, 300);
   if (document.readyState === "complete") go(); else window.addEventListener("load", go);
+}
+
+// ---- Forum (Board > Forum tab). Tables: forum_topics (parent_id = sub-topic), forum_threads, forum_posts, forum_hearts, forum_settings.
+// Deep links: #forum, #forum-topic-<id>, #forum-thread-<id>. All user text goes through escapeHtml/formatText.
+const FORUM = { view: "list", id: null, topics: [], settings: {}, myHearts: new Set(), seq: 0 };
+function forumEl(){ return document.getElementById("forum"); }
+function forumAgo(ts){
+  const s = Math.max(0, (Date.now() - new Date(ts).getTime()) / 1000);
+  if (s < 60) return "now"; if (s < 3600) return Math.floor(s / 60) + "m"; if (s < 86400) return Math.floor(s / 3600) + "h";
+  if (s < 86400 * 7) return Math.floor(s / 86400) + "d";
+  return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/Chicago" });
+}
+function forumMe(){
+  if (!sb || !currentSession) return null;
+  const me = currentUser(); if (!me || !me.handle) return null;
+  if (!me.owner && !me.bot && !me.confirmed) return null;
+  return me;
+}
+function forumIsOwner(){ return !!(sb && isOwnerSession(currentSession)); }
+function forumMine(handle){ const me = forumMe(); return !!(me && handle && String(me.handle).toLowerCase() === String(handle).toLowerCase()); }
+function forumTopic(id){ return FORUM.topics.find(t => t.id === Number(id)); }
+function forumOwnerOnly(t){ if (!t) return true; if (t.owner_only) return true; const p = t.parent_id ? forumTopic(t.parent_id) : null; return !!(p && p.owner_only); }
+function forumAv(row){ const u = /^(https:\/\/|\/|data:image\/)/.test(row.avatar || "") ? row.avatar : ""; return escapeHtml(u || (String(row.handle).toLowerCase() === "johnnyskyride" && OWNER_AV) || AV); }
+function forumWho(row){
+  return `<b>${escapeHtml(row.name || row.handle)}</b>${commentStar({ h: row.handle, n: row.name })}<span class="h">@${escapeHtml(row.handle)}</span>`;
+}
+function forumGo(view, id){
+  const h = view === "list" ? "forum" : "forum-" + view + "-" + Number(id);
+  if (location.hash.slice(1) === h) openForum(view, id); else location.hash = h;
+}
+async function forumLoadBase(){
+  if (!sb) return;
+  const [t, s] = await Promise.all([
+    sb.from("forum_topics").select("id,parent_id,name,description,sort,owner_only").order("sort").order("name"),
+    sb.from("forum_settings").select("members_can_create_subtopics").eq("id", 1).maybeSingle()
+  ]);
+  if (t.error) console.error(t.error);
+  FORUM.topics = t.data || [];
+  FORUM.settings = (s && s.data) || {};
+}
+async function forumLoadHearts(){
+  FORUM.myHearts = new Set();
+  if (!sb || !currentSession) return;
+  const { data } = await sb.from("forum_hearts").select("kind,target_id");
+  (data || []).forEach(r => FORUM.myHearts.add(r.kind + ":" + r.target_id));
+}
+async function openForum(view, id){
+  FORUM.view = view || "list"; FORUM.id = id ? Number(id) : null;
+  if (currentTab !== "forum") {
+    currentTab = "forum";
+    document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === "forum"));
+  }
+  return renderFeed();
+}
+async function renderForum(){
+  const seq = ++FORUM.seq, el = forumEl();
+  if (!el) return;
+  if (!sb) { el.innerHTML = '<div class="fm-empty">The forum could not load. Try again later.</div>'; return; }
+  if (!FORUM.topics.length || FORUM.view === "list") await forumLoadBase();
+  await forumLoadHearts();
+  if (seq !== FORUM.seq) return;
+  if (FORUM.view === "thread") return forumThreadView(seq);
+  if (FORUM.view === "topic") return forumTopicView(seq);
+  return forumListView(seq);
+}
+async function forumListView(seq){
+  const { data: th } = await sb.from("forum_threads").select("topic_id,last_activity_at").limit(5000);
+  if (seq !== FORUM.seq) return;
+  const stat = {};
+  (th || []).forEach(r => {
+    const t = forumTopic(r.topic_id); if (!t) return;
+    const top = t.parent_id || t.id;
+    const s = stat[top] || (stat[top] = { n: 0, last: null });
+    s.n++; if (!s.last || r.last_activity_at > s.last) s.last = r.last_activity_at;
+  });
+  const tops = FORUM.topics.filter(t => !t.parent_id);
+  forumEl().innerHTML = `<div class="fm-head"><h2>Forum</h2><p>Pick a topic. Anyone can read; members can start threads and reply.</p></div>
+    <div class="fm-list">${tops.map(t => {
+      const s = stat[t.id] || { n: 0 };
+      const subs = FORUM.topics.filter(x => x.parent_id === t.id).length;
+      return `<a class="fm-topic" href="#forum-topic-${t.id}">
+        <div class="fm-tname">${escapeHtml(t.name)}${t.owner_only ? ' <span class="fm-badge">Johnny only</span>' : ""}</div>
+        <div class="fm-tdesc">${escapeHtml(t.description)}</div>
+        <div class="fm-meta">${s.n} ${s.n === 1 ? "thread" : "threads"}${subs ? " · " + subs + " sub-topic" + (subs === 1 ? "" : "s") : ""}${s.last ? " · active " + forumAgo(s.last) : ""}</div>
+      </a>`;
+    }).join("")}</div>`;
+}
+function forumCrumbs(t, extra){
+  let h = `<a href="#forum">Forum</a>`;
+  if (t && t.parent_id) { const p = forumTopic(t.parent_id); if (p) h += ` › <a href="#forum-topic-${p.id}">${escapeHtml(p.name)}</a>`; }
+  if (t) h += ` › <a href="#forum-topic-${t.id}">${escapeHtml(t.name)}</a>`;
+  return `<nav class="fm-crumbs">${h}${extra || ""}</nav>`;
+}
+async function forumTopicView(seq){
+  const t = forumTopic(FORUM.id);
+  if (!t) { forumEl().innerHTML = forumCrumbs(null) + '<div class="fm-empty">That topic is gone.</div>'; return; }
+  const subs = FORUM.topics.filter(x => x.parent_id === t.id);
+  const { data: threads, error } = await sb.from("forum_threads")
+    .select("id,topic_id,handle,name,title,pinned,locked,likes,reply_count,last_activity_at,created_at")
+    .eq("topic_id", t.id).order("pinned", { ascending: false }).order("last_activity_at", { ascending: false }).limit(200);
+  if (seq !== FORUM.seq) return;
+  if (error) console.error(error);
+  const me = forumMe(), own = forumIsOwner();
+  const canSub = own || (!!FORUM.settings.members_can_create_subtopics && !!me && !t.parent_id && !forumOwnerOnly(t));
+  const canThread = !!me && (own || !forumOwnerOnly(t));
+  let compose;
+  if (canThread) compose = `<div class="fm-compose" id="fm-new">
+      <input id="fm-title" maxlength="120" placeholder="Thread title" autocomplete="off">
+      <textarea id="fm-body" class="reply-box" maxlength="5000" rows="4" placeholder="What do you want to talk about?"></textarea>
+      <div class="fm-row">${fmtButtons("fm-body")}<button class="fm-btn" onclick="forumNewThread(${t.id})">Post thread</button></div></div>`;
+  else if (!me && forumOwnerOnly(t)) compose = "";
+  else if (!me) compose = `<div class="fm-note"><a href="javascript:void(0)" onclick="openAuth()">Become a member</a> to start a thread.</div>`;
+  else compose = forumOwnerOnly(t) ? `<div class="fm-note">Only Johnny posts new threads here. You can reply to them.</div>` : "";
+  forumEl().innerHTML = forumCrumbs(t.parent_id ? t : null) + `<div class="fm-head"><h2>${escapeHtml(t.name)}</h2><p>${escapeHtml(t.description)}</p>
+      ${own ? `<div class="fm-tools"><button class="fm-ghost" onclick="forumEditTopic(${t.id})">Edit topic</button><button class="fm-ghost" onclick="forumDeleteTopic(${t.id})">Delete topic</button></div>` : ""}</div>
+    ${subs.length || canSub ? `<div class="fm-sec">Sub-topics</div><div class="fm-list">${subs.map(s => `<a class="fm-topic sub" href="#forum-topic-${s.id}"><div class="fm-tname">${escapeHtml(s.name)}</div>${s.description ? `<div class="fm-tdesc">${escapeHtml(s.description)}</div>` : ""}</a>`).join("")}
+      ${canSub && !t.parent_id ? `<button class="fm-ghost fm-add" onclick="forumNewSubtopic(${t.id})">＋ Add sub-topic</button>` : ""}</div>` : ""}
+    ${compose}
+    <div class="fm-sec">Threads</div>
+    <div class="fm-threads">${(threads || []).length ? threads.map(r => `<a class="fm-trow" href="#forum-thread-${r.id}">
+        <div class="fm-ttitle">${r.pinned ? '<span title="Pinned">📌</span> ' : ""}${r.locked ? '<span title="Locked">🔒</span> ' : ""}${escapeHtml(r.title)}</div>
+        <div class="fm-meta">@${escapeHtml(r.handle)} · ${r.reply_count} ${r.reply_count === 1 ? "reply" : "replies"} · ♥ ${r.likes} · ${forumAgo(r.last_activity_at)}</div></a>`).join("")
+      : '<div class="fm-empty">No threads yet. Start the first one.</div>'}</div>`;
+}
+function forumHeart(kind, row){
+  const on = FORUM.myHearts.has(kind + ":" + row.id);
+  return `<span class="heart${on ? " liked" : ""}" data-fk="${kind}" data-fid="${row.id}" onclick="forumToggleHeart(this)" title="Heart" aria-label="Heart">${on ? "♥" : "♡"} <i>${row.likes || ""}</i></span>`;
+}
+async function forumThreadView(seq){
+  const { data: th, error } = await sb.from("forum_threads").select("*").eq("id", FORUM.id).maybeSingle();
+  if (seq !== FORUM.seq) return;
+  if (error) console.error(error);
+  if (!th) { forumEl().innerHTML = forumCrumbs(null) + '<div class="fm-empty">That thread is no longer available.</div>'; return; }
+  const { data: posts } = await sb.from("forum_posts").select("*").eq("thread_id", th.id).order("created_at").limit(1000);
+  if (seq !== FORUM.seq) return;
+  FORUM.threadTopic = th.topic_id;
+  const t = forumTopic(th.topic_id), own = forumIsOwner(), me = forumMe();
+  const mod = [];
+  if (own) { mod.push(`<button onclick="forumMod(${th.id},'pinned',${!th.pinned})">${th.pinned ? "Unpin" : "Pin"}</button>`, `<button onclick="forumMod(${th.id},'locked',${!th.locked})">${th.locked ? "Unlock" : "Lock"}</button>`); }
+  if (own && forumMine(th.handle)) mod.push(`<button onclick="forumEditThread(${th.id})">Edit</button>`);
+  if (own || forumMine(th.handle)) mod.push(`<button onclick="forumDelete('thread',${th.id})">Delete</button>`);
+  const reply = th.locked && !own ? `<div class="fm-note">🔒 This thread is locked.</div>`
+    : me ? `<div class="fm-compose"><textarea id="fm-reply" class="reply-box" maxlength="5000" rows="3" placeholder="Write a reply"></textarea><div class="fm-row">${fmtButtons("fm-reply")}<button class="fm-btn" onclick="forumReply(${th.id})">Reply</button></div></div>`
+    : `<div class="fm-note"><a href="javascript:void(0)" onclick="openAuth()">Become a member</a> to reply.</div>`;
+  forumEl().innerHTML = forumCrumbs(t) + `<article class="fm-post fm-op">
+      <img class="av" src="${forumAv(th)}" alt="">
+      <div class="fm-pbody">
+        <div class="who">${forumWho(th)}<span class="h"> · ${forumAgo(th.created_at)}${th.edited_at ? " · edited" : ""}</span></div>
+        <h2 class="fm-title">${th.pinned ? "📌 " : ""}${th.locked ? "🔒 " : ""}${escapeHtml(th.title)}</h2>
+        <div class="body">${formatText(th.body)}</div>
+        <div class="actions">${forumHeart("thread", th)}<span onclick="forumShare(${th.id})" title="Share">↗</span><span style="color:#71767b">💬 ${th.reply_count}</span></div>
+        ${mod.length ? `<div class="fm-mod">${mod.join("")}</div>` : ""}
+      </div></article>
+    <div class="fm-replies">${(posts || []).map(p => `<article class="fm-post" id="fm-p-${p.id}">
+      <img class="av" src="${forumAv(p)}" alt="">
+      <div class="fm-pbody">
+        <div class="who">${forumWho(p)}<span class="h"> · ${forumAgo(p.created_at)}${p.edited_at ? " · edited" : ""}</span></div>
+        <div class="body">${formatText(p.body)}</div>
+        <div class="actions">${forumHeart("post", p)}${own && forumMine(p.handle) ? `<span onclick="forumEditPost(${p.id})">Edit</span>` : ""}${own || forumMine(p.handle) ? `<span onclick="forumDelete('post',${p.id})">Delete</span>` : ""}</div>
+      </div></article>`).join("")}</div>${reply}`;
+}
+function forumAuthor(){
+  const me = forumMe(); if (!me) return null;
+  if (me.owner) return { handle: "johnnyskyride", name: me.name, avatar: "" };
+  return { handle: me.handle, name: me.name, avatar: me.avatar || "" };
+}
+function forumNeedMember(){
+  if (!sb || !currentSession) { alert("Log in to post in the forum."); openAuth(); return null; }
+  const a = forumAuthor(); if (!a) { alert("Confirm your email before posting."); return null; }
+  return a;
+}
+function forumErr(e){ return /rate_limited/.test(e.message || "") ? "You're posting a lot. Try again in a bit." : (e.message || "Something went wrong."); }
+async function forumNewThread(topicId){
+  const a = forumNeedMember(); if (!a) return;
+  const title = document.getElementById("fm-title").value.trim().slice(0, 120);
+  const body = document.getElementById("fm-body").value.trim().slice(0, 5000);
+  if (!title || !body) { alert("Add a title and some text."); return; }
+  const { data, error } = await sb.from("forum_threads").insert({ topic_id: topicId, title, body, ...a }).select("id").single();
+  if (error) { alert("Could not post: " + forumErr(error)); return; }
+  forumGo("thread", data.id);
+}
+async function forumReply(threadId){
+  const a = forumNeedMember(); if (!a) return;
+  const el = document.getElementById("fm-reply");
+  const body = el.value.trim().slice(0, 5000); if (!body) return;
+  const { error } = await sb.from("forum_posts").insert({ thread_id: threadId, body, ...a });
+  if (error) { alert("Could not reply: " + forumErr(error)); return; }
+  el.value = ""; renderForum();
+}
+async function forumToggleHeart(el){
+  if (!sb || !currentSession) { alert("Log in to heart posts."); openAuth(); return; }
+  if (el.dataset.busy) return; el.dataset.busy = "1";
+  const kind = el.dataset.fk, id = Number(el.dataset.fid), key = kind + ":" + id;
+  try {
+    let n = parseInt(el.textContent.replace(/\D/g, "") || "0", 10);
+    if (FORUM.myHearts.has(key)) {
+      const { error } = await sb.from("forum_hearts").delete().eq("kind", kind).eq("target_id", id);
+      if (error) { alert("Could not remove heart: " + error.message); return; }
+      FORUM.myHearts.delete(key); n = Math.max(0, n - 1);
+    } else {
+      const email = String(currentSession.user.email || "").toLowerCase();
+      const { error } = await sb.from("forum_hearts").insert({ kind, target_id: id, user_email: email });
+      if (error && error.code !== "23505") { alert("Could not heart: " + error.message); return; }
+      FORUM.myHearts.add(key); if (!error) n++;
+    }
+    const on = FORUM.myHearts.has(key);
+    el.classList.toggle("liked", on); el.innerHTML = (on ? "♥" : "♡") + " <i>" + (n || "") + "</i>";
+  } finally { delete el.dataset.busy; }
+}
+function forumShare(id){ shareLink(SHARE_ORIGIN + "/board/#forum-thread-" + Number(id)); }
+async function forumMod(id, field, val){
+  if (!forumIsOwner()) return;
+  const { error } = await sb.from("forum_threads").update({ [field]: !!val }).eq("id", id);
+  if (error) { alert("Could not update: " + error.message); return; }
+  renderForum();
+}
+async function forumDelete(kind, id){
+  if (!confirm(kind === "thread" ? "Delete this thread and all its replies?" : "Delete this reply?")) return;
+  const { data, error } = await sb.from(kind === "thread" ? "forum_threads" : "forum_posts").delete().eq("id", id).select("id");
+  if (error || !data || !data.length) { alert("Could not delete" + (error ? ": " + error.message : ".")); return; }
+  if (kind === "thread") forumGo("topic", FORUM.threadTopic);
+  else renderForum();
+}
+async function forumEditThread(id){
+  if (!forumIsOwner()) return;
+  const { data: th } = await sb.from("forum_threads").select("title,body").eq("id", id).maybeSingle(); if (!th) return;
+  const title = prompt("Title (max 120):", th.title); if (title === null) return;
+  const body = prompt("Text (max 5000):", th.body); if (body === null) return;
+  const { error } = await sb.from("forum_threads").update({ title: title.trim().slice(0, 120), body: body.trim().slice(0, 5000), edited_at: new Date().toISOString() }).eq("id", id);
+  if (error) alert("Could not save: " + error.message); renderForum();
+}
+async function forumEditPost(id){
+  if (!forumIsOwner()) return;
+  const { data: p } = await sb.from("forum_posts").select("body").eq("id", id).maybeSingle(); if (!p) return;
+  const body = prompt("Edit reply (max 5000):", p.body); if (body === null) return;
+  const { error } = await sb.from("forum_posts").update({ body: body.trim().slice(0, 5000), edited_at: new Date().toISOString() }).eq("id", id);
+  if (error) alert("Could not save: " + error.message); renderForum();
+}
+async function forumNewSubtopic(parentId){
+  const me = forumAuthor(); if (!me) { openAuth(); return; }
+  const name = (prompt("Sub-topic name (max 60):") || "").trim().slice(0, 60); if (!name) return;
+  const description = (prompt("One-line description (optional, max 200):") || "").trim().slice(0, 200);
+  const { error } = await sb.from("forum_topics").insert({ parent_id: parentId, name, description, created_by: me.handle });
+  if (error) { alert("Could not add sub-topic: " + error.message); return; }
+  await forumLoadBase(); renderForum();
+}
+async function forumEditTopic(id){
+  if (!forumIsOwner()) return; const t = forumTopic(id); if (!t) return;
+  const name = prompt("Name (max 60):", t.name); if (name === null) return;
+  const description = prompt("Description (max 200):", t.description); if (description === null) return;
+  const { error } = await sb.from("forum_topics").update({ name: name.trim().slice(0, 60), description: description.trim().slice(0, 200) }).eq("id", id);
+  if (error) alert("Could not save: " + error.message); await forumLoadBase(); renderForum();
+}
+async function forumDeleteTopic(id){
+  if (!forumIsOwner()) return; const t = forumTopic(id); if (!t) return;
+  if (!confirm(`Delete "${t.name}" with ALL its sub-topics, threads and replies? This can't be undone.`)) return;
+  const { error } = await sb.from("forum_topics").delete().eq("id", id);
+  if (error) { alert("Could not delete: " + error.message); return; }
+  await forumLoadBase(); forumGo(t.parent_id ? "topic" : "list", t.parent_id);
 }
 
 // ---- Collections (static). To add a piece: add one entry to the right kind's items. To add a new kind: add a new key. ----

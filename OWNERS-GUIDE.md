@@ -225,3 +225,26 @@ Anything dated in the future is skipped until that date, so timed releases take 
 **Adding a new item:** give it a date. For a timed single, the `release_at` you already set is enough. For a store item, add `"releasedAt": "YYYY-MM-DD"` (plus `label`, `featureImage`, `featureSub`) to its `jsr-products` entry. For a new collection, add `releasedAt` to it. For a hand-added song, add `data-released="YYYY-MM-DD"` to its `<div class="song">`. Then run `python3 tools/build-pages.py` and commit.
 
 The Music tile shows the newest dated song. The Board tile shows the newest post.
+
+## Forum
+
+The Forum is the fourth tab on the Board page (Posts / Replies / Media / **Forum**). Anyone can read; signed-in, confirmed members can start threads and reply; hearts are members-only. Links: `/board/#forum`, `/board/#forum-topic-<id>`, `/board/#forum-thread-<id>` (the ↗ share button copies the thread link).
+
+**Where it lives (Supabase, project wsrzkxmwufwceqqbstrj, schema public):**
+- `forum_topics`: topics and sub-topics. `parent_id` empty = top-level topic, set = sub-topic of that topic. `sort` orders them, `owner_only = true` means only you can start threads there (Announcements; its sub-topics inherit it).
+- `forum_threads`: title (max 120) + body (max 5000), `pinned`, `locked`, `likes`, `reply_count`.
+- `forum_posts`: replies (max 5000).
+- `forum_hearts`: who hearted what (counts update automatically).
+- `forum_settings`: one row of switches (see below).
+- Migration: `forum_tables`. Rules (RLS): everyone can read; members can only post as themselves; only you can pin/lock/edit/move; members can delete their own threads/replies; you can delete anything. Rate limit: 5 new threads and 30 replies per member per hour (you're exempt).
+
+**Moderate (log in as owner first):**
+- Open a thread: under it you get **Pin / Lock / Delete** (and **Edit** on your own). Locked threads take no new replies except yours. Replies have **Delete** (and **Edit** on yours).
+- Add a sub-topic: open a topic, tap **＋ Add sub-topic**, type a name and a one-line description.
+- Rename or delete a topic: open it and use **Edit topic / Delete topic**. Deleting removes its sub-topics, threads and replies for good.
+- Add a new top-level topic (SQL Editor): `insert into forum_topics (name, description, sort, created_by) values ('New Topic', 'One-line description.', 15, 'johnnyskyride');`
+- Reorder topics: `update forum_topics set sort = 3 where name = 'Hot Takes';`
+
+**Let members create sub-topics:** in the SQL Editor run `update forum_settings set members_can_create_subtopics = true where id = 1;` (set back to `false` to turn off). Members then see **＋ Add sub-topic** on top-level topics (not Announcements). You can still rename or delete any sub-topic.
+
+Forum replies don't send email notifications yet.
