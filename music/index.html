@@ -652,7 +652,6 @@
 .sf-sub{color:#71767b;font-size:13px;margin-top:2px}
 .sf-price{font-weight:800;font-size:18px;white-space:nowrap}
 .sf-price s{color:#71767b;font-weight:400;font-size:13px;margin-left:4px}
-.sf-sale{display:inline-block;margin:2px 0 4px;padding:6px 12px;border-radius:999px;background:rgba(255,79,163,.14);border:1px solid #ff4fa3;color:#ff4fa3;font-size:13px;font-weight:700;text-decoration:none}
 .sf-list{color:#a8adb2;margin:8px 0 12px;padding-left:18px;font-size:14px;line-height:1.55;columns:2;column-gap:18px}
 @media (max-width:480px){.sf-list{columns:1}}
 .sf-btns{display:flex;gap:8px;flex-wrap:wrap}
@@ -1008,10 +1007,11 @@ no one × nothing × nuh uh</div>
         </div>
 
         <div class="sf-card st-item" id="skyforge" data-product="skyforge">
-          <img class="sf-hero" id="sf-hero" src="/assets/skyforge-halloween.jpg" alt="SkyForge instrument window over a Halloween scene with carved dragons and pumpkins" width="1200" height="655" decoding="async">
+          <img class="sf-hero" id="sf-hero" src="/assets/skyforge-stone.jpg" alt="SkyForge instrument window set in a mossy stone dragon frame" width="1200" height="661" decoding="async">
           <div class="sf-thumbs sf-more">
-            <button type="button" class="on" data-src="/assets/skyforge-halloween.jpg"><img loading="lazy" decoding="async" src="/assets/skyforge-halloween.jpg" alt="SkyForge Halloween cover"></button>
+            <button type="button" class="on" data-src="/assets/skyforge-stone.jpg"><img loading="lazy" decoding="async" src="/assets/skyforge-stone.jpg" alt="SkyForge instrument window set in a mossy stone dragon frame"></button>
             <button type="button" data-src="/assets/skyforge-cover.jpg"><img loading="lazy" decoding="async" src="/assets/skyforge-cover.jpg" alt="SkyForge cover"></button>
+            <button type="button" data-src="/assets/skyforge-halloween.jpg"><img loading="lazy" decoding="async" src="/assets/skyforge-halloween.jpg" alt="SkyForge Halloween cover"></button>
             <button type="button" data-src="/assets/skyforge-shot-1.jpg"><img loading="lazy" decoding="async" src="/assets/skyforge-shot-1.jpg" alt="SkyForge in Ableton Live"></button>
             <button type="button" data-src="/assets/skyforge-shot-2.jpg"><img loading="lazy" decoding="async" src="/assets/skyforge-shot-2.jpg" alt="SkyForge Forge skin"></button>
             <button type="button" data-src="/assets/skyforge-shot-3.jpg"><img loading="lazy" decoding="async" src="/assets/skyforge-shot-3.jpg" alt="SkyForge Rack skin"></button>
@@ -1021,9 +1021,8 @@ no one × nothing × nuh uh</div>
           <div class="sf-body">
             <div class="sf-head">
               <div><b class="sf-title">SkyForge</b><div class="sf-sub">VST3 instrument for Windows · by SoSkyride</div></div>
-              <div class="st-right"><div class="sf-price">$26 <s>$29 on itch.io</s></div><button type="button" class="st-share" onclick="shareProduct('skyforge')" aria-label="Share SkyForge" title="Share">↗</button></div>
+              <div class="st-right"><div class="sf-price">$26</div><button type="button" class="st-share" onclick="shareProduct('skyforge')" aria-label="Share SkyForge" title="Share">↗</button></div>
             </div>
-            <a class="sf-sale" id="sf-sale" href="https://johnnyskyride.itch.io" target="_blank" rel="noopener">🔥 Sale on itch.io through 11/4: 54% off the full itch.io price</a>
             <p class="sf-more">An analog-style instrument for Ableton Live. Put it on a MIDI track, arm, and play. If all you've got is the computer keyboard, that still writes the clip.</p>
             <p class="sf-more">The Kind row (Earth, Water, Fire, Wind) changes the voice, not the skin. Halloween, Waters, and Aether sit on top. Ear Wyrm records what you played and cuts a clip from it, dragon and all. Bounce a WAV if you want the audio.</p>
             <ul class="sf-list sf-more">
@@ -1068,9 +1067,8 @@ no one × nothing × nuh uh</div>
           <div class="sf-body">
             <div class="sf-head">
               <div><b class="sf-title">SkyForge Mobile</b><div class="sf-sub">Android app · by SoSkyride</div></div>
-              <div class="st-right"><div class="sf-price" id="sm-price">$6.69 <s>$9.99</s></div><button type="button" class="st-share" onclick="shareProduct('skyforge-mobile')" aria-label="Share SkyForge Mobile" title="Share">↗</button></div>
+              <div class="st-right"><div class="sf-price" id="sm-price">$9.99</div><button type="button" class="st-share" onclick="shareProduct('skyforge-mobile')" aria-label="Share SkyForge Mobile" title="Share">↗</button></div>
             </div>
-            <span class="sf-sale" id="sm-sale">🔥 33% off through 11/4</span>
             <p class="sf-more">SkyForge on your phone. A separate purchase from the Windows VST3 above: this one is the Android app.</p>
             <ul class="sf-list sf-more">
               <li>Android 10 or newer</li>
@@ -1082,7 +1080,7 @@ no one × nothing × nuh uh</div>
               <li>Coming soon to Google Play and the App Store</li>
             </ul>
             <div class="sf-btns">
-              <a class="sf-buy" id="sm-buy" href="https://buy.stripe.com/3cI5kF9ho7Bu4Gu0iM4ow0g">Buy $6.69</a>
+              <a class="sf-buy" id="sm-buy" href="https://buy.stripe.com/bJebJ3fFM5tm4Gu1mQ4ow0f">Buy $9.99</a>
             </div>
             <p class="sf-fine sf-more">Instant download link by email after checkout (works for 7 days). Android only for now.</p>
             <ol class="sf-fine sm-steps sf-more">
@@ -3349,20 +3347,10 @@ function restoreReturnTo(){
 })();
 
 (function skyforgeStore(){
-  /* itch.io sale tag: auto-hides after 6:00 AM Central 11/4/2026 (11:00 UTC). Remove the #sf-sale element and this line afterward. */
-  const sale = document.getElementById("sf-sale"); if (sale && Date.now() >= Date.UTC(2026, 10, 4, 11, 0, 0)) sale.remove();
   document.querySelectorAll(".sf-thumbs").forEach((strip) => strip.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
     const hero = document.getElementById(strip.dataset.hero || "sf-hero"); if (hero) hero.src = b.dataset.src;
     strip.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
   })));
-  /* SkyForge Mobile launch sale: after 6:00 AM Central 11/4/2026 (11:00 UTC) switch to $9.99 + the regular link.
-     After the sale, delete #sm-sale, set #sm-price to "$9.99", #sm-buy to the regular link/"Buy $9.99", and delete this block. */
-  if (Date.now() >= Date.UTC(2026, 10, 4, 11, 0, 0)) {
-    const p = document.getElementById("sm-price"), b = document.getElementById("sm-buy"), t = document.getElementById("sm-sale");
-    if (p) p.textContent = "$9.99";
-    if (b) { b.href = "https://buy.stripe.com/bJebJ3fFM5tm4Gu1mQ4ow0f"; b.textContent = "Buy $9.99"; }
-    if (t) t.remove();
-  }
   const thanks = new URLSearchParams(location.search).get("thanks");
   if (thanks === "skyforge" || thanks === "skyforge-mobile") {
     const n = document.getElementById(thanks === "skyforge" ? "sf-thanks" : "sm-thanks");
