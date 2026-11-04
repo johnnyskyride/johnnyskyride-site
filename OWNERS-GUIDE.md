@@ -69,7 +69,8 @@ Store rows (`store_products`, column `item`): eight $2 singles, `skyforge`, `sky
 7. The public `skyforge-feed` `version.json` is separate. Until it is retired, update it there too if the app still reads it.
 
 ### Recipe 3b: swap the SkyForge VST3 zip
-Same as 3a, folder `skyforge`, file name `SkyForge-VST3.zip`.
+1. Same as 3a steps 1–3, folder `skyforge`, file name `SkyForge-VST3.zip` (download the old one first as a backup).
+2. **EVERY VST3 zip swap must also update the `app_releases` row for `skyforge-vst3` (version + versionCode + sha256)**, or the plugin's updater will offer the wrong version or reject the file. Get the SHA-256 on Windows with `certutil -hashfile SkyForge-VST3.zip SHA256` (or `sha256sum` on Mac/Linux) and run the "Publish a new VST3 release" snippet under *Update codes*.
 
 ### Recipe 3c: change a price
 1. Stripe → Payment Links → **Create** a new link for the product at the new price (keep "tax included" the same as the old one). Stripe prices can't be edited in place.
@@ -115,7 +116,9 @@ Copy the `link` it returns and email it. It works once and expires in 7 days. To
 
 Limit: single-use stops a forwarded email from working, but a buyer who downloads once can still share the file itself. Nothing on a website can prevent that.
 
-### Update codes (SkyForge Mobile in-app updates)
+### Update codes (SkyForge Mobile and SkyForge VST3 updates)
+
+The same code now serves two products through `app-update` (field `product`): `skyforge-mobile` (the Android app, the default) and `skyforge-vst3` (the Windows plugin, once the plugin's update feature is built; spec in vst3-update-spec.md). Only codes whose `item` is `skyforge` (SkyForge VST3 purchases, which include the app) work for the plugin; SkyForge Mobile-only codes (`item = 'skyforge-mobile'`) get "invalid code" for the plugin. The 5 per hour / 20 per day download caps count separately per product (table `app_license_downloads`, column `product`); the 1000 lifetime total is shared. Version codes for both: MAJOR×10000 + MINOR×100 + PATCH (2.12.20 → 21220).
 
 Every SkyForge Mobile or SkyForge purchase email includes one personal update code like `SF-7K2M-9QXD` (table `app_licenses`, one per order). The app sends it to the `app-update` function. The app's background checks are free. Only tapping **Update** uses one update and gets a 5-minute download link to the private APK. Each code allows 1000 updates in its lifetime, with at most 5 downloads per hour and 20 per day, so real buyers never get locked out. A code can still be shared. If one downloads far more than normal (check `updates_used` and `last_used_at`), turn it off and make the buyer a new one with the snippets below. Run these in Supabase → SQL Editor.
 
@@ -142,10 +145,17 @@ update public.app_licenses set max_updates = max_updates + 1000 where code = 'SF
 
 Publish a new app release (after uploading the APK, Recipe 3a). Use the app's real version name and versionCode:
 ```sql
-insert into public.app_releases (version, code, file_path, notes)
-values ('2.12.25', 21225, 'skyforge-mobile/SkyForge-Mobile.apk', 'What changed, one line.');
+insert into public.app_releases (product, version, code, file_path, notes)
+values ('skyforge-mobile', '2.12.25', 21225, 'skyforge-mobile/SkyForge-Mobile.apk', 'What changed, one line.');
 ```
-Phones with a lower versionCode get the update next time they check. The app always serves the newest active row; to roll back, `update public.app_releases set active = false where code = 21225;` and put the old APK back. (Optional: upload to a versioned path such as `skyforge-mobile/SkyForge-2.12.25.apk` and use that as `file_path`, so older files stay available.)
+
+Publish a new VST3 release (after uploading the zip, Recipe 3b). Paste the real SHA-256 (64 lowercase hex characters):
+```sql
+insert into public.app_releases (product, version, code, file_path, notes, sha256)
+values ('skyforge-vst3', '2.12.21', 21221, 'skyforge/SkyForge-VST3.zip', 'What changed, one line.', 'paste-sha256-here');
+```
+Each product serves its own newest active row. The plugin checks the file against `sha256`, so a wrong hash means the update is refused.
+Phones with a lower versionCode get the update next time they check. The app always serves the newest active row; to roll back, `update public.app_releases set active = false where product = 'skyforge-mobile' and code = 21225;` and put the old APK back. (Optional: upload to a versioned path such as `skyforge-mobile/SkyForge-2.12.25.apk` and use that as `file_path`, so older files stay available.)
 
 ## 4. Nov 4, 2026 sale cleanup (6:00 AM Central)
 
