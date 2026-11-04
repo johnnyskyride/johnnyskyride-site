@@ -36,6 +36,13 @@
   "image": "/assets/og-image.jpg",
   "alt": "×ＭΛＮ×ｂΞｉｎｇ× @johnnyskyride — johnnyskyride.com"
  },
+ "board": {
+  "path": "/board/",
+  "title": "Board · ×ＭΛＮ×ｂΞｉｎｇ× — Johnny Skyride",
+  "description": "Board — posts from ×ＭΛＮ×ｂΞｉｎｇ× (@johnnyskyride) — ///🌟 ADDk— no one × nothing × nuh uh",
+  "image": "/assets/og-image.jpg",
+  "alt": "×ＭΛＮ×ｂΞｉｎｇ× @johnnyskyride — johnnyskyride.com"
+ },
  "articles": {
   "path": "/articles/",
   "title": "Articles · ×ＭΛＮ×ｂΞｉｎｇ× — Johnny Skyride",
@@ -93,13 +100,21 @@
   "title": "SkyForge · Store · Johnny Skyride",
   "description": "SkyForge by SoSkyride: an analog-style VST3 instrument for Ableton Live (Windows). Free demo.",
   "image": "/assets/og-skyforge.jpg",
-  "alt": "SkyForge VST3 instrument by SoSkyride"
+  "alt": "SkyForge VST3 instrument by SoSkyride",
+  "releasedAt": "2026-10-18",
+  "label": "SkyForge",
+  "featureImage": "/assets/skyforge-cover.jpg",
+  "featureSub": "VST3 · $26 · Android APK included"
  },
  "skyforge-mobile": {
   "title": "SkyForge Mobile · Store · Johnny Skyride",
   "description": "SkyForge Mobile · Android app by SoSkyride. Keys or glide pad, Forge and Rack skins, Ear Wyrm, built-in sequencer, bounce to your favorite mobile DAW.",
   "image": "/assets/og-skyforge-mobile.jpg",
-  "alt": "SkyForge Mobile Android app by SoSkyride"
+  "alt": "SkyForge Mobile Android app by SoSkyride",
+  "releasedAt": "2026-10-31",
+  "label": "SkyForge Mobile",
+  "featureImage": "/assets/skyforge-mobile-demo-poster.jpg",
+  "featureSub": "Android app"
  },
  "sessions": {
   "title": "Sessions · Store · Johnny Skyride",
@@ -610,6 +625,19 @@
 .st-share{flex:0 0 auto;width:32px;height:32px;border-radius:999px;border:1px solid #2f3336;background:none;color:#e7e9ea;font-size:15px;cursor:pointer;line-height:1}
 .st-share:hover{background:#16181c;border-color:#ff4fa3;color:#ff4fa3}
 .st-right{display:flex;align-items:center;gap:10px}
+/* Home tile grid */
+.hm-hd{padding:24px 20px 0}.hm-hd h1{margin:0;font-size:28px}.hm-sub{color:#71767b;margin-top:4px}
+.hm-grid{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:180px;gap:14px;padding:20px}
+.hm-t{position:relative;border-radius:18px;overflow:hidden;border:1px solid #2f3336;background:#16181c center/cover no-repeat;color:#e7e9ea;text-decoration:none;transition:border-color .15s}
+.hm-t:hover{border-color:#ff4fa3}.hm-t:focus-visible{outline:2px solid #ff4fa3;outline-offset:2px}
+.hm-t:after{content:'';position:absolute;inset:0;background:linear-gradient(transparent 40%,rgba(0,0,0,.85))}
+.hm-l{position:absolute;left:16px;bottom:14px;right:16px;z-index:1}
+.hm-k{font-size:12px;color:#ff6bb5;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.hm-t b{font-size:20px;display:block;margin-top:2px}.hm-m{color:#c9cdd1;font-size:14px}
+.hm-big{grid-column:span 2;grid-row:span 2}.hm-big b{font-size:30px}.hm-w{grid-column:span 2}
+.hm-board:after{display:none}.hm-board .hm-l{top:16px}.hm-board b{font-size:17px;font-weight:600;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line}
+.hm-board .hm-m{color:#71767b;margin-top:8px}.hm-heart{color:#a970ff}
+@media(max-width:800px){.hm-grid{grid-auto-rows:160px}}
 </style>
 </head>
 <body>
@@ -617,6 +645,7 @@
   <aside class="side">
     <div class="logo" id="site-logo" style="cursor:pointer"><img src="/assets/avatar.jpg" alt=""></div>
     <button class="nav-btn" data-page="home"><span class="ic">⌂</span><span>Home</span></button>
+    <button class="nav-btn" data-page="board"><span class="ic">☰</span><span>Board</span></button>
     <button class="nav-btn" data-page="articles"><span class="ic">✎</span><span>Articles</span></button>
     <button class="nav-btn" data-page="music"><span class="ic">♪</span><span>Music</span></button>
     <button class="nav-btn" data-page="collections"><span class="ic">◈</span><span>Collections</span></button>
@@ -624,7 +653,7 @@
     <button class="nav-btn" data-page="sessions"><span class="ic">✦</span><span>Sessions</span></button>
     <button class="nav-btn" data-page="members"><span class="ic">☺</span><span>Members</span></button>
     <button class="nav-btn active" data-page="store"><span class="ic">▣</span><span>Store</span></button>
-    <button class="post-btn owner-only" onclick="document.getElementById('composer').focus()">Post</button>
+    <button class="post-btn owner-only" onclick="show('board');document.getElementById('composer').focus()">Post</button>
     <div class="me">
       <img src="/assets/avatar.jpg" alt="">
       <div>
@@ -636,6 +665,7 @@
 
   <nav class="mobile-nav" id="mnav">
     <button data-page="home">Home</button>
+    <button data-page="board">Board</button>
     <button data-page="articles">Articles</button>
     <button data-page="music">Music</button>
     <button data-page="collections">Collections</button>
@@ -646,9 +676,23 @@
   </nav>
 
   <main class="main">
-    <!-- HOME -->
+    <!-- HOME (tile grid; featured tile = newest release, see renderHome) -->
     <section class="page" id="home">
-      <div class="topbar">Home</div>
+      <div class="hm-hd"><h1>Johnny Skyride</h1><div class="hm-sub">Johnny &amp; The Bots · instruments · imagery</div></div>
+      <div class="hm-grid" id="hm-grid">
+        <a class="hm-t hm-big" id="hm-feat" href="/store/skyforge-mobile/" style="background-image:url('/assets/skyforge-mobile-demo-poster.jpg')"><div class="hm-l"><span class="hm-k">Featured</span><b>SkyForge Mobile</b><span class="hm-m"></span></div></a>
+        <a class="hm-t" id="hm-music" href="/music/" data-go="music" style="background-image:url('/assets/cover-under-hoof.jpg')"><div class="hm-l"><span class="hm-k">Music</span><b>Under Hoof</b></div></a>
+        <a class="hm-t" id="hm-app" href="/store/skyforge-mobile/" data-product="skyforge-mobile" style="background-image:url('/assets/skyforge-mobile-demo-poster.jpg')"><div class="hm-l"><span class="hm-k">App</span><b>SkyForge Mobile</b><span class="hm-m" id="hm-app-price"></span></div></a>
+        <a class="hm-t hm-w" href="/imagery/" data-go="imagery" style="background-image:url('/assets/gallery-beach.jpg')"><div class="hm-l"><span class="hm-k">Imagery</span><b>Gallery</b></div></a>
+        <a class="hm-t" href="/collections/" data-go="collections" style="background-image:url('/assets/og-collections.jpg')"><div class="hm-l"><span class="hm-k">Collections</span><b>Mallow NFTs</b></div></a>
+        <a class="hm-t" href="/sessions/" data-go="sessions" style="background-image:url('/assets/gallery-stand.jpg')"><div class="hm-l"><span class="hm-k">Sessions</span><b>Book a session</b></div></a>
+        <a class="hm-t hm-w hm-board" id="hm-board" href="/board/" data-go="board"><div class="hm-l"><span class="hm-k">Board</span><b id="hm-board-t">Latest from the board</b><div class="hm-m" id="hm-board-meta"><span style="color:#ff6bb5">Open Board →</span></div></div></a>
+      </div>
+    </section>
+
+    <!-- BOARD (the feed that used to be Home) -->
+    <section class="page" id="board">
+      <div class="topbar">Board</div>
       <div class="who-bar">
         <span id="who-label">Visitor</span>
         <button id="who-btn" onclick="openAuth()">Sign in</button>
@@ -778,7 +822,7 @@ no one × nothing × nuh uh</div>
         
           <a href="https://buy.stripe.com/14A3cx8dk2ha3Cq2qU4ow02" target="_blank" style="background:#635bff;color:#fff;padding:6px 12px;border-radius:999px;font-weight:800;text-decoration:none;margin-left:8px">Buy $2</a></div>
         
-      </div><div class="song" id="song-owl-knight">
+      </div><div class="song" id="song-owl-knight" data-released="2026-08-09">
         <div style="color:#71767b;font-size:13px">solo - single · Aug 9, 2026</div>
         <h2>Owl Knight</h2>
         <img loading="lazy" decoding="async" class="cov" src="/assets/cover-owl-knight.jpg" alt="Owl Knight">
@@ -790,7 +834,7 @@ no one × nothing × nuh uh</div>
         
           <a href="https://buy.stripe.com/6oU6oJ5186xqc8W0iM4ow03" target="_blank" style="background:#635bff;color:#fff;padding:6px 12px;border-radius:999px;font-weight:800;text-decoration:none;margin-left:8px">Buy $2</a></div>
         
-      </div><div class="song" id="song-a-bunny">
+      </div><div class="song" id="song-a-bunny" data-released="2026-06-23">
         <div style="color:#71767b;font-size:13px">solo - single · Jun 23, 2026</div>
         <h2>A-Bunny</h2>
         <img loading="lazy" decoding="async" class="cov" src="/assets/cover-a-bunny.jpg" alt="A-Bunny">
@@ -1187,8 +1231,8 @@ function setFeedFilter(f, quiet){
   const box = document.getElementById("feed-search");
   if (box && !quiet) box.value = feedFilter.tag ? "#" + feedFilter.tag : (feedFilter.q || "");
   if (feedFilter.tag || feedFilter.q) {
-    const home = document.getElementById("home");
-    if (home && !home.classList.contains("on")) { try { show("home", { history: "none" }); } catch {} }
+    const board = document.getElementById("board");
+    if (board && !board.classList.contains("on")) { try { show("board", { history: "none" }); } catch {} }
     if (currentTab !== "posts") { currentTab = "posts"; document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === "posts")); }
   }
   renderFeed();
@@ -1303,7 +1347,8 @@ async function renderFeed(){
     </article>`;
   }).join("");
   fillMedia(page);
-  bumpViews(page.map(p => p.id));
+  LAST_FEED_IDS = page.map(p => p.id);
+  if (document.getElementById("board")?.classList.contains("on")) bumpViews(LAST_FEED_IDS);   // count views only when the Board is showing
   const pages = Math.ceil(all.length / PAGE_SIZE);
   if (pages > 1) {
     let pager = '<div style="display:flex;justify-content:center;gap:8px;padding:16px">';
@@ -1508,7 +1553,7 @@ async function publish(){
   document.getElementById("send").disabled = true;
   if (schedAt) { toggleSchedule(false); showToast("Scheduled for " + fmtCentral(schedAt)); }
   renderFeed();
-  show("home");
+  show("board");
 }
 // ---- Scheduled posts (owner only; the DB hides them from everyone else until publish_at) ----
 let SCHEDULED = [];
@@ -1644,6 +1689,7 @@ function show(id, opts){
   }
   if (id === "store") { const st = document.getElementById("store"); st.classList.remove("pv"); st.querySelectorAll(".pv-on").forEach(e => e.classList.remove("pv-on")); }
   if (id === "members") renderMembers();
+  if (id === "board" && LAST_FEED_IDS.length) bumpViews(LAST_FEED_IDS);
   if (!opts.noScroll) window.scrollTo(0,0);
 }
 document.querySelectorAll("[data-page]").forEach(b => b.addEventListener("click", () => show(b.dataset.page)));
@@ -2521,6 +2567,8 @@ async function loadReleases(){
   }
   RELEASES_SHOWN = key;
   renderReleases(live, p => signed[p] || "");
+  HOME_RELEASES = live.map(r => ({ kind: "Music", date: r.release_at, title: (r.data || {}).title, img: signed[(r.data || {}).cover] || "", sub: r.section === "band" ? "Johnny & The Bots" : "solo - single", go: () => openSong("song-" + r.slug, r.section === "band" ? "band" : "solo"), href: "/music/" }));
+  renderHome();
   const sc = document.getElementById("solo-count");   // 4 original singles plus every solo release that is live
   if (sc) sc.textContent = 4 + live.filter(r => r.section !== "band").length;
 }
@@ -2765,7 +2813,7 @@ async function openEmbedSource(kind, id){
     if (ARTICLES.some(a => a.id === id)) readArticle(id); else showToast("That article is no longer available.");
     return;
   }
-  show("home");
+  show("board");
   const find = () => document.querySelector(`[data-post="${CSS.escape(id)}"]`);
   if (!find()) {
     const posts = await loadPosts();
@@ -2950,6 +2998,7 @@ async function notifyMentions(text, authorHandle, authorIsBot){
   return;
 }
 
+var LAST_FEED_IDS = [];
 async function bumpViews(ids){
   if (!sb) return;
   for (const id of ids){
@@ -3225,6 +3274,7 @@ if (/^#(c|ac|post)-/.test(location.hash)) {
 const COLLECTIONS = {
   nfts: {
     label: "NFTs",
+    releasedAt: "2026-10-28",   // date the NFTs went up on the site (Home featured tile uses this)
     note: "Minted on Solana via Mallow. Prices shown were the listing when added and may have changed; check Mallow for current price and availability.",
     items: [
       { title: "The Fuzz", edition: "Limited edition of 26", price: "55 USDC", img: "/assets/collections/the-fuzz.jpg", video: "/assets/collections/the-fuzz.mp4", url: "https://www.mallow.art/artwork/7grBThT4rc8Xi25S1EJyZ9WXKBsJrCx1s5EoQhD5KD6F" },
@@ -3244,6 +3294,60 @@ function renderCollections(kind){
   document.querySelectorAll("#coll-grid video").forEach(v => v.addEventListener("play", () => document.querySelectorAll("#coll-grid video").forEach(o => { if (o !== v) o.pause(); })));
 }
 renderCollections("nfts");
+
+// ---- Home tile grid. Featured = newest LIVE item by date across music (static data-released + public.releases),
+// Collections (COLLECTIONS.<kind>.releasedAt) and Store (#jsr-products releasedAt). Future dates never show.
+let HOME_RELEASES = [];
+function homeCandidates(){
+  const now = Date.now(), out = [];
+  const day = d => /^\d{4}-\d{2}-\d{2}$/.test(d) ? d + "T12:00:00-06:00" : d;
+  document.querySelectorAll("#music .song[data-released]").forEach(el => {
+    const sub = el.closest("#sub-band") ? "band" : "solo";
+    out.push({ kind: "Music", date: day(el.dataset.released), title: el.querySelector("h2")?.textContent || "", img: el.querySelector("img.cov")?.getAttribute("src") || "", sub: sub === "band" ? "Johnny & The Bots" : "solo - single", go: () => openSong(el.id, sub), href: "/music/" });
+  });
+  HOME_RELEASES.forEach(r => out.push(r));
+  Object.keys(COLLECTIONS).forEach(k => { const c = COLLECTIONS[k]; if (c.releasedAt) out.push({ kind: "Collection", date: day(c.releasedAt), title: "Mallow " + c.label, img: (c.items[0] || {}).img || "/assets/og-collections.jpg", sub: c.items.map(i => i.title).join(" · "), go: () => { show("collections"); renderCollections(k); }, href: "/collections/" }); });
+  Object.keys(PRODUCTS).forEach(slug => { const p = PRODUCTS[slug]; if (p.releasedAt) out.push({ kind: "Store", date: day(p.releasedAt), title: p.label || slug, img: p.featureImage || p.image, sub: p.featureSub || "", go: () => openProduct(slug), href: "/store/" + slug + "/" }); });
+  return out.filter(x => x.date && !isNaN(new Date(x.date)) && new Date(x.date).getTime() <= now).sort((a, b) => new Date(b.date) - new Date(a.date));
+}
+function setTile(el, it, label){
+  if (!el || !it) return;
+  el.href = it.href; el._go = it.go;
+  if (it.img) el.style.backgroundImage = "url('" + String(it.img).replace(/'/g, "%27") + "')";
+  const l = el.querySelector(".hm-l");
+  l.innerHTML = `<span class="hm-k"></span><b></b><span class="hm-m"></span>`;
+  l.children[0].textContent = label; l.children[1].textContent = it.title; l.children[2].textContent = it.sub || "";
+}
+async function renderHome(){
+  const all = homeCandidates();
+  const feat = all[0];
+  if (feat) setTile(document.getElementById("hm-feat"), feat, "Featured · " + feat.kind);
+  const music = all.find(x => x.kind === "Music");
+  if (music) setTile(document.getElementById("hm-music"), music, "Music");
+  const pr = document.getElementById("sm-price"), ap = document.getElementById("hm-app-price");
+  if (pr && ap) ap.textContent = pr.textContent.replace(/\s+/g, " ").trim().split(" ")[0];
+}
+async function renderHomeBoard(){
+  try {
+    const posts = await loadPosts();
+    const p = (posts || []).find(x => x.t && x.t.trim()) || (posts || [])[0];
+    if (!p) return;
+    const t = document.getElementById("hm-board-t"), m = document.getElementById("hm-board-meta");
+    t.textContent = (p.t || "").trim() || "New post";
+    m.innerHTML = `<span class="hm-heart">♥</span> ${Number(p.likes) || 0} · <span></span> · <span style="color:#ff6bb5">Open Board →</span>`;
+    m.children[1].textContent = p.d || "";
+    document.getElementById("hm-board").href = "/#post-" + encodeURIComponent(p.id);
+    document.getElementById("hm-board")._go = () => { location.hash = "post-" + p.id; };
+  } catch (e) { console.warn("home board", e); }
+}
+document.querySelectorAll("#hm-grid .hm-t").forEach(el => el.addEventListener("click", ev => {
+  if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button) return;
+  ev.preventDefault();
+  if (el._go) return el._go();
+  if (el.dataset.product) return openProduct(el.dataset.product);
+  if (el.dataset.go) show(el.dataset.go);
+}));
+renderHome(); renderHomeBoard();
 </script>
 
 <div class="mini" id="mini">

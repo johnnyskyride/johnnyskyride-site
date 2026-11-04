@@ -210,3 +210,18 @@ Point them to this file. Invite them, don't share passwords: GitHub (repo Settin
 - **Payment Link:** a Stripe checkout URL for one product. **Webhook:** Stripe telling the site "someone paid."
 - **Resend:** the email-sending service. **DNS / registrar:** the address book for the domain, at GoDaddy.
 - **APK:** an Android app file. **VST3:** the Windows plugin format.
+
+## Home page and featured tile
+
+The Home page (johnnyskyride.com/) is a tile grid. The old feed (posts, replies, media, composer) now lives on the **Board** page (/board/). Post and comment share links (/p/..., /c/...) open the post on the Board.
+
+**How the big Featured tile picks what to show:** it shows the newest item, by release date, across:
+- **Music:** timed releases in Supabase (`releases.release_at`), plus songs in index.html that have a `data-released="YYYY-MM-DD"` attribute (Owl Knight, A-Bunny).
+- **Collections:** `releasedAt` on each kind in `COLLECTIONS` in index.html (NFTs: 2026-10-28).
+- **Store:** `releasedAt` on each product in the `jsr-products` block at the top of index.html (SkyForge 2026-10-18, SkyForge Mobile 2026-10-31). `featureImage` and `featureSub` set the tile's picture and small line.
+
+Anything dated in the future is skipped until that date, so timed releases take over the tile on their own. Items without a date are never featured.
+
+**Adding a new item:** give it a date. For a timed single, the `release_at` you already set is enough. For a store item, add `"releasedAt": "YYYY-MM-DD"` (plus `label`, `featureImage`, `featureSub`) to its `jsr-products` entry. For a new collection, add `releasedAt` to it. For a hand-added song, add `data-released="YYYY-MM-DD"` to its `<div class="song">`. Then run `python3 tools/build-pages.py` and commit.
+
+The Music tile shows the newest dated song. The Board tile shows the newest post.
