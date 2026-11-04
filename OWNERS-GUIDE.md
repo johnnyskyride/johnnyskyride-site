@@ -261,5 +261,5 @@ Covers every notification email the `notify` function sends (forum replies, comm
 - **See or flip a member's setting** (Supabase → SQL editor):
   `select * from notification_prefs where email = 'them@example.com';`
   `insert into notification_prefs(email, notify_email) values ('them@example.com', false) on conflict (email) do update set notify_email = excluded.notify_email;`
-- **Turn ALL notification emails off at once:** Supabase → Edge Functions → `notify` → Secrets: delete `RESEND_API_KEY` is too broad (it's shared), so instead run `update notification_prefs set notify_email = false;` for existing rows, or ask your developer to add a global switch. Rows for new recipients default to on.
+- **Turn ALL notification emails off at once:** there's no single switch yet. Running `update notification_prefs set notify_email = false;` silences everyone who has a row (every past recipient); brand-new recipients still default to on. Don't remove `RESEND_API_KEY`, because purchase emails use Resend too.
 - Pieces: migration `notification_email_prefs`, edge functions `notify` (v7) and `unsubscribe`, page `unsubscribe/index.html` (hand-written, not generated).
