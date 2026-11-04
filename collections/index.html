@@ -718,7 +718,7 @@ no one × nothing × nuh uh</div>
           <a href="https://johnnyskyride.itch.io" target="_blank">Itch.io</a>
           <a href="https://unsaid.fyi/johnnyskyride" target="_blank">Unsaid.fyi</a>
         </div>
-        <div class="counts"><div><b id="solo-count">4</b> <span>Solo singles</span></div></div>
+        <div class="counts"><div><b id="solo-count">4</b> <span>Solo singles</span></div><div><b id="band-count">2</b> <span>Band singles</span></div></div>
       </div>
       <div class="tabs">
         <button class="active" data-tab="posts">Posts</button>
@@ -2572,6 +2572,8 @@ async function loadReleases(){
   renderHome();
   const sc = document.getElementById("solo-count");   // 4 original singles plus every solo release that is live
   if (sc) sc.textContent = 4 + live.filter(r => r.section !== "band").length;
+  const bc = document.getElementById("band-count");   // 2 original band singles (Under Hoof, Waste Bin) plus every band release that is live
+  if (bc) bc.textContent = 2 + live.filter(r => r.section === "band").length;
 }
 function renderReleases(rows, urlFor){
   rows.slice().reverse().forEach(r => {        // oldest first, each prepended, so the newest ends on top
