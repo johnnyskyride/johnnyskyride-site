@@ -236,10 +236,11 @@ The Forum is the fourth tab on the Board page (Posts / Replies / Media / **Forum
 - `forum_posts`: replies (max 5000).
 - `forum_hearts`: who hearted what (counts update automatically).
 - `forum_settings`: one row of switches (see below).
-- Migration: `forum_tables`. Rules (RLS): everyone can read; members can only post as themselves; only you can pin/lock/edit/move; members can delete their own threads/replies; you can delete anything. Rate limit: 5 new threads and 30 replies per member per hour (you're exempt).
+- Migration: `forum_tables`. Rules (RLS): everyone can read; members can only post as themselves; only you can pin/lock/move; members can edit their own threads (title + text) and replies, and delete them; you can edit and delete anything. Rate limit: 5 new threads and 30 replies per member per hour (you're exempt).
+- Migration `forum_reply_notify_and_self_edit`: self-edit rules. A guard (`forum_edit_guard`) stops members changing anything except title/text (not pin, lock, hearts, counts, topic or author); length limits still apply; any title/text change stamps `edited_at`, shown as a small *edited* tag.
 
 **Moderate (log in as owner first):**
-- Open a thread: under it you get **Pin / Lock / Delete** (and **Edit** on your own). Locked threads take no new replies except yours. Replies have **Delete** (and **Edit** on yours).
+- Open a thread: under it you get **Pin / Lock / Edit / Delete** on every thread. Locked threads take no new replies except yours. Replies have **Edit / Delete**. Members see **Edit / Delete** only on their own.
 - Add a sub-topic: open a topic, tap **＋ Add sub-topic**, type a name and a one-line description.
 - Rename or delete a topic: open it and use **Edit topic / Delete topic**. Deleting removes its sub-topics, threads and replies for good.
 - Add a new top-level topic (SQL Editor): `insert into forum_topics (name, description, sort, created_by) values ('New Topic', 'One-line description.', 15, 'johnnyskyride');`
@@ -247,4 +248,4 @@ The Forum is the fourth tab on the Board page (Posts / Replies / Media / **Forum
 
 **Let members create sub-topics:** in the SQL Editor run `update forum_settings set members_can_create_subtopics = true where id = 1;` (set back to `false` to turn off). Members then see **＋ Add sub-topic** on top-level topics (not Announcements). You can still rename or delete any sub-topic.
 
-Forum replies don't send email notifications yet.
+**Reply emails (on):** when someone replies to a thread, the thread's author gets one email (trigger `forum_posts_notify` → `queue_notification` → `notify` edge function → Resend, from `notify@johnnyskyride.com`). Subject: "@who replied to your forum thread"; plain text with the reply and a link to `/board/#forum-thread-<id>`. No email for replying to your own thread, none if the author has no email on file, one per reply, nobody else is emailed. Each one is logged in `notifications` (kind `forum_reply`). There is no per-member opt-out or unsubscribe yet (the site's other notification emails don't have one either). To switch reply emails off: `alter table forum_posts disable trigger forum_posts_notify;` (`enable` to turn back on).

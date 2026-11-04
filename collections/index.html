@@ -371,6 +371,7 @@
   .fm-compose textarea { resize: vertical; min-height: 80px; }
   .fm-row { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
   .fm-btn { background: var(--accent); color: #000; border: 0; border-radius: 999px; padding: 9px 18px; font-weight: 700; cursor: pointer; }
+  .fm-edited { font-size: 12px; font-style: italic; opacity: .8; }
   .fm-ghost { background: none; color: var(--accent); border: 1px solid var(--border); border-radius: 999px; padding: 7px 14px; font-weight: 600; cursor: pointer; }
   .fm-add { justify-self: start; }
   .fm-tools { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
@@ -3469,7 +3470,7 @@ async function forumThreadView(seq){
   const t = forumTopic(th.topic_id), own = forumIsOwner(), me = forumMe();
   const mod = [];
   if (own) { mod.push(`<button onclick="forumMod(${th.id},'pinned',${!th.pinned})">${th.pinned ? "Unpin" : "Pin"}</button>`, `<button onclick="forumMod(${th.id},'locked',${!th.locked})">${th.locked ? "Unlock" : "Lock"}</button>`); }
-  if (own && forumMine(th.handle)) mod.push(`<button onclick="forumEditThread(${th.id})">Edit</button>`);
+  if (own || forumMine(th.handle)) mod.push(`<button onclick="forumEditThread(${th.id})">Edit</button>`);
   if (own || forumMine(th.handle)) mod.push(`<button onclick="forumDelete('thread',${th.id})">Delete</button>`);
   const reply = th.locked && !own ? `<div class="fm-note">🔒 This thread is locked.</div>`
     : me ? `<div class="fm-compose"><textarea id="fm-reply" class="reply-box" maxlength="5000" rows="3" placeholder="Write a reply"></textarea><div class="fm-row">${fmtButtons("fm-reply")}<button class="fm-btn" onclick="forumReply(${th.id})">Reply</button></div></div>`
@@ -3477,7 +3478,7 @@ async function forumThreadView(seq){
   forumEl().innerHTML = forumCrumbs(t) + `<article class="fm-post fm-op">
       <img class="av" src="${forumAv(th)}" alt="">
       <div class="fm-pbody">
-        <div class="who">${forumWho(th)}<span class="h"> · ${forumAgo(th.created_at)}${th.edited_at ? " · edited" : ""}</span></div>
+        <div class="who">${forumWho(th)}<span class="h"> · ${forumAgo(th.created_at)}${th.edited_at ? ` · <span class="fm-edited" title="Edited ${escapeHtml(forumAgo(th.edited_at))}">edited</span>` : ""}</span></div>
         <h2 class="fm-title">${th.pinned ? "📌 " : ""}${th.locked ? "🔒 " : ""}${escapeHtml(th.title)}</h2>
         <div class="body">${formatText(th.body)}</div>
         <div class="actions">${forumHeart("thread", th)}<span onclick="forumShare(${th.id})" title="Share">↗</span><span style="color:#71767b">💬 ${th.reply_count}</span></div>
@@ -3486,9 +3487,9 @@ async function forumThreadView(seq){
     <div class="fm-replies">${(posts || []).map(p => `<article class="fm-post" id="fm-p-${p.id}">
       <img class="av" src="${forumAv(p)}" alt="">
       <div class="fm-pbody">
-        <div class="who">${forumWho(p)}<span class="h"> · ${forumAgo(p.created_at)}${p.edited_at ? " · edited" : ""}</span></div>
+        <div class="who">${forumWho(p)}<span class="h"> · ${forumAgo(p.created_at)}${p.edited_at ? ` · <span class="fm-edited" title="Edited ${escapeHtml(forumAgo(p.edited_at))}">edited</span>` : ""}</span></div>
         <div class="body">${formatText(p.body)}</div>
-        <div class="actions">${forumHeart("post", p)}${own && forumMine(p.handle) ? `<span onclick="forumEditPost(${p.id})">Edit</span>` : ""}${own || forumMine(p.handle) ? `<span onclick="forumDelete('post',${p.id})">Delete</span>` : ""}</div>
+        <div class="actions">${forumHeart("post", p)}${own || forumMine(p.handle) ? `<span onclick="forumEditPost(${p.id})">Edit</span>` : ""}${own || forumMine(p.handle) ? `<span onclick="forumDelete('post',${p.id})">Delete</span>` : ""}</div>
       </div></article>`).join("")}</div>${reply}`;
 }
 function forumAuthor(){
@@ -3554,18 +3555,18 @@ async function forumDelete(kind, id){
   else renderForum();
 }
 async function forumEditThread(id){
-  if (!forumIsOwner()) return;
+  if (!forumMe()) return;
   const { data: th } = await sb.from("forum_threads").select("title,body").eq("id", id).maybeSingle(); if (!th) return;
   const title = prompt("Title (max 120):", th.title); if (title === null) return;
   const body = prompt("Text (max 5000):", th.body); if (body === null) return;
-  const { error } = await sb.from("forum_threads").update({ title: title.trim().slice(0, 120), body: body.trim().slice(0, 5000), edited_at: new Date().toISOString() }).eq("id", id);
+  const { error } = await sb.from("forum_threads").update({ title: title.trim().slice(0, 120), body: body.trim().slice(0, 5000) }).eq("id", id);
   if (error) alert("Could not save: " + error.message); renderForum();
 }
 async function forumEditPost(id){
-  if (!forumIsOwner()) return;
+  if (!forumMe()) return;
   const { data: p } = await sb.from("forum_posts").select("body").eq("id", id).maybeSingle(); if (!p) return;
   const body = prompt("Edit reply (max 5000):", p.body); if (body === null) return;
-  const { error } = await sb.from("forum_posts").update({ body: body.trim().slice(0, 5000), edited_at: new Date().toISOString() }).eq("id", id);
+  const { error } = await sb.from("forum_posts").update({ body: body.trim().slice(0, 5000) }).eq("id", id);
   if (error) alert("Could not save: " + error.message); renderForum();
 }
 async function forumNewSubtopic(parentId){
