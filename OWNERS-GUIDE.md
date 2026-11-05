@@ -273,3 +273,7 @@ Covers every notification email the `notify` function sends (forum replies, comm
   `insert into notification_prefs(email, notify_email) values ('them@example.com', false) on conflict (email) do update set notify_email = excluded.notify_email;`
 - **Turn ALL notification emails off at once:** there's no single switch yet. Running `update notification_prefs set notify_email = false;` silences everyone who has a row (every past recipient); brand-new recipients still default to on. Don't remove `RESEND_API_KEY`, because purchase emails use Resend too.
 - Pieces: migration `notification_email_prefs`, edge functions `notify` (v7) and `unsubscribe`, page `unsubscribe/index.html` (hand-written, not generated).
+
+## Traffic stats
+
+Visitor stats are in Cloudflare Web Analytics: sign in at dash.cloudflare.com, then Analytics & Logs > Web Analytics > johnnyskyride.com. The tracking snippet (a cloudflareinsights script tag) sits just before </body> in index.html and the hand-written pages (dl, unsubscribe, 404, thanks). It uses no cookies. If you add a new hand-written page, copy that script tag into it.
