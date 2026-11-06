@@ -3154,6 +3154,12 @@ function renderPostBody(text, id){
 
 // ---- Post media: cached and filled after each render (fixes empty boxes from the old lazy-load race) ----
 const MEDIA_CACHE = {};
+// Link-preview posts: tapping the image of a post whose text has a link opens the first link
+document.addEventListener("click", e => {
+  const img = e.target.closest && e.target.closest("#feed .post-media img"); if (!img) return;
+  const post = img.closest("[data-post]"); const a = post && post.querySelector('.body a[href^="http"]');
+  if (!a) return; e.preventDefault(); e.stopPropagation(); window.open(a.href, "_blank", "noopener");
+}, true);
 function mediaInner(m){
   if (!m || !m.media) return "";
   return m.media_type && m.media_type.startsWith("video")
