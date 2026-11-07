@@ -277,3 +277,44 @@ Covers every notification email the `notify` function sends (forum replies, comm
 ## Traffic stats
 
 Visitor stats are in Cloudflare Web Analytics: sign in at dash.cloudflare.com, then Analytics & Logs > Web Analytics > johnnyskyride.com. The tracking snippet (a cloudflareinsights script tag) sits just before </body> in index.html and the hand-written pages (dl, unsubscribe, 404, thanks). It uses no cookies. If you add a new hand-written page, copy that script tag into it.
+
+
+## Pay Me To Exist
+
+Homepage-only banner lives inside `#home`; other navigation sections do not show it.
+The corner X minimizes it for the current tab session (`sessionStorage`, key
+`jsr-exist-minimized-v1`); a small reopen button restores it. Blocked storage falls
+back to in-memory state. Keyboard focus follows minimize/reopen. Checkout anchors
+also work without JavaScript. Rebuild with `python3 tools/build-pages.py` after edits.
+
+All options are **one-time personal support**, no goods/rewards/subscription or
+charitable claim. Per owner's final **no tax** decision, `automatic_tax.enabled=false`
+on these three links only. `managed_payments.enabled=false`. Global tax settings
+and existing store links were not changed. No actual payment was made.
+
+Live account `acct_1U8ZimRyFwX44bse`; product `prod_VaDt29Oc7ZPp7E`.
+
+| Option | Price ID | Payment Link ID | URL |
+|---|---|---|---|
+| $333 USD | `price_1UZ3S5RyFwX44bsesIKS5r98` | `plink_1UZ3SCRyFwX44bseXI8kMrAT` | https://buy.stripe.com/dRm00l65c8Fy2ym9Tm4ow0i |
+| $777 USD | `price_1UZ3SCRyFwX44bset671IbqO` | `plink_1UZ3SIRyFwX44bse7VKqXSv0` | https://buy.stripe.com/fZu4gB2T00923Cqd5y4ow0j |
+| Name your price | `price_1UZ3SIRyFwX44bse3H7SrTsD` | `plink_1UZ3SORyFwX44bseoZ0BeWUs` | https://buy.stripe.com/dRm7sNeBIcVO6OC2qU4ow0k |
+
+Custom amount minimum $0.50 USD, maximum $10,000 USD (Stripe's supported
+customer-custom-amount ceiling); preset is null, so no $333 starting amount.
+Stripe hosted confirmation thanks the supporter without promising downloads.
+Read-back verified live/active links, tax and Managed Payments off, and no
+subscription or future payment-method setup. Hosted checkout browser QA confirmed
+$333/$777 with no added tax; custom starts at $0.00 without a preset, accepts an
+edited $12 amount, and enforces the $10,000 maximum. No payment was submitted.
+
+Live `store-fulfill` v12 was inspected: unknown payment links return "not a store
+item" before orders, download tokens, or email sends. These links are not added to
+`store_products`. Metadata uses `jsr_support`, never the `jsr_product` fallback.
+Do not add support links to store fulfillment; it would send misleading downloads.
+
+Tests: `node tests/exist-banner.test.cjs`; inline JS syntax with `node --check`;
+`git diff --check`. Local preview was HTTP 200 but unavailable to the browser
+(ERR_CONNECTION_REFUSED), so post-deploy desktop/mobile layout, X/reopen keyboard,
+reload persistence, and navigation-away checks remain required. Automated state
+and homepage-containment tests pass. No browser screenshot was captured locally.
