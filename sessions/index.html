@@ -694,6 +694,22 @@
 .hm-board:after{display:none}.hm-board .hm-l{top:16px}.hm-board b{font-size:17px;font-weight:600;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line}
 .hm-board .hm-m{color:#71767b;margin-top:8px}.hm-heart{color:#a970ff}
 @media(max-width:800px){.hm-grid{grid-auto-rows:160px}}
+/* Homepage-only personal support banner. */
+.exist-banner{position:relative;margin:20px 20px 0;padding:24px;border:1px solid #754365;border-radius:18px;background:linear-gradient(125deg,#271326,#16181c 75%)}
+.exist-banner h2{margin:4px 36px 10px 0;font-size:clamp(24px,5vw,34px);line-height:1.15;letter-spacing:-.03em}
+.exist-kicker{color:#ff8bc6;font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase}
+.exist-banner p{margin:0 0 18px;color:#c9cdd1;line-height:1.5;max-width:48ch}
+.exist-close{position:absolute;right:10px;top:10px;width:44px;height:44px;border:0;border-radius:50%;background:transparent;color:#e7e9ea;font-size:26px;cursor:pointer}
+.exist-options{display:flex;flex-wrap:wrap;gap:10px}
+.exist-options a{flex:1 1 110px;display:flex;align-items:center;justify-content:center;min-height:48px;padding:8px 14px;border:1px solid #a35a86;border-radius:999px;color:#fff;background:#341c30;text-decoration:none;font-weight:700;text-align:center}
+.exist-options a:last-child{flex-grow:1.5}
+.exist-options a:hover,.exist-close:hover{background:#49233e}
+.exist-options a[aria-disabled="true"]{opacity:.5;cursor:not-allowed}
+.exist-banner small{display:block;color:#c9cdd1;margin-top:14px;line-height:1.5}
+.exist-reopen{margin:16px 20px 0;background:none;color:#b8a9b5;border:1px solid #493441;border-radius:999px;padding:10px 14px;min-height:44px;cursor:pointer;font:inherit;font-size:13px}
+.exist-banner[hidden],.exist-reopen[hidden]{display:none}
+.exist-banner a:focus-visible,.exist-banner button:focus-visible,.exist-reopen:focus-visible{outline:2px solid #ff8bc6;outline-offset:3px}
+@media(max-width:420px){.exist-banner{padding:20px;margin:16px 14px 0}.exist-options a{flex-basis:90px}.exist-options a:last-child{flex-basis:100%}}
 </style>
 </head>
 <body>
@@ -734,6 +750,20 @@
   <main class="main">
     <!-- HOME (tile grid; featured tile = newest release, see renderHome) -->
     <section class="page" id="home">
+      <aside class="exist-banner" id="exist-banner" aria-labelledby="exist-title">
+        <button class="exist-close" id="exist-close" type="button" aria-label="Minimize Pay Me To Exist">×</button>
+        <span class="exist-kicker">A little support. A little more possibility.</span>
+        <h2 id="exist-title" tabindex="-1">Pay Me To Exist</h2>
+        <p>Like having me around? Help keep the human behind the music, instruments, and imagery going.</p>
+        <div class="exist-options" aria-label="One-time support options">
+          <a data-exist-link="333" href="https://buy.stripe.com/dRm00l65c8Fy2ym9Tm4ow0i">$333 USD</a>
+          <a data-exist-link="777" href="https://buy.stripe.com/fZu4gB2T00923Cqd5y4ow0j">$777 USD</a>
+          <a data-exist-link="custom" href="https://buy.stripe.com/dRm7sNeBIcVO6OC2qU4ow0k">Name your price</a>
+        </div>
+        <small>One-time personal support via Stripe. Choose $0.50–$10,000 USD with name your price. No subscription, goods, or rewards. Not a charitable donation.</small>
+      </aside>
+      <button class="exist-reopen" id="exist-reopen" type="button" aria-controls="exist-banner" aria-expanded="false" hidden>Pay Me To Exist ↗</button>
+
       <div class="hm-hd"><h1>Johnny Skyride</h1><div class="hm-sub">Johnny &amp; The Bots · instruments · imagery</div></div>
       <div class="hm-grid" id="hm-grid">
         <a class="hm-t hm-big" id="hm-feat" href="/store/skyforge-mobile/" style="background-image:url('/assets/skyforge-mobile-demo-poster.jpg')"><div class="hm-l"><span class="hm-k">Featured</span><b>SkyForge Mobile</b><span class="hm-m"></span></div></a>
@@ -1194,6 +1224,34 @@ no one × nothing × nuh uh</div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+
+// Verified live personal-support links; separate from store fulfillment.
+const EXIST_PAYMENT_LINKS = {"333": "https://buy.stripe.com/dRm00l65c8Fy2ym9Tm4ow0i", "777": "https://buy.stripe.com/fZu4gB2T00923Cqd5y4ow0j", "custom": "https://buy.stripe.com/dRm7sNeBIcVO6OC2qU4ow0k"};
+(function initExistBanner(){
+  const banner = document.getElementById('exist-banner');
+  const reopen = document.getElementById('exist-reopen');
+  const close = document.getElementById('exist-close');
+  const key = 'jsr-exist-minimized-v1';
+  function setMinimized(minimized, moveFocus){
+    banner.hidden = minimized;
+    reopen.hidden = !minimized;
+    reopen.setAttribute('aria-expanded', String(!minimized));
+    try { sessionStorage.setItem(key, minimized ? '1' : '0'); } catch (_) {}
+    if(moveFocus) (minimized ? reopen : document.getElementById('exist-title')).focus();
+  }
+  let minimized = false;
+  try { minimized = sessionStorage.getItem(key) === '1'; } catch (_) {}
+  setMinimized(minimized, false);
+  close.addEventListener('click', () => setMinimized(true, true));
+  reopen.addEventListener('click', () => setMinimized(false, true));
+  document.querySelectorAll('[data-exist-link]').forEach(link => {
+    const url = EXIST_PAYMENT_LINKS[link.dataset.existLink];
+    if(url && /^https:\/\/buy\.stripe\.com\/[A-Za-z0-9_]+$/.test(url)){
+      link.href = url;
+      link.removeAttribute('aria-disabled');
+    }
+  });
+})();
 const fullPosts = {};
 document.addEventListener("click", function(e){
   const logo = e.target.closest && e.target.closest("#site-logo");
