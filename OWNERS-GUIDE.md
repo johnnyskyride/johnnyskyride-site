@@ -152,7 +152,7 @@ values ('skyforge-mobile', '2.12.25', 21225, 'skyforge-mobile/SkyForge-Mobile.ap
 Publish a new VST3 release (after uploading the zip, Recipe 3b). Paste the real SHA-256 (64 lowercase hex characters):
 ```sql
 insert into public.app_releases (product, version, code, file_path, notes, sha256)
-values ('skyforge-vst3', '2.12.21', 21221, 'skyforge/SkyForge-VST3.zip', 'What changed, one line.', 'paste-sha256-here');
+values ('skyforge-vst3', '2.12.26', 21226, 'skyforge/SkyForge-VST3.zip', 'What changed, one line.', 'paste-sha256-here');
 ```
 Each product serves its own newest active row. The plugin checks the file against `sha256`, so a wrong hash means the update is refused.
 Phones with a lower versionCode get the update next time they check. The app always serves the newest active row; to roll back, `update public.app_releases set active = false where product = 'skyforge-mobile' and code = 21225;` and put the old APK back. (Optional: upload to a versioned path such as `skyforge-mobile/SkyForge-2.12.25.apk` and use that as `file_path`, so older files stay available.)
