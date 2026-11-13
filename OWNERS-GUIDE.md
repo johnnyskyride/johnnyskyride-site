@@ -57,7 +57,7 @@ How a sale works:
 2. Stripe calls `store-fulfill`. It checks Stripe's signature, finds the `store_products` row whose `payment_link` matches, records the sale in `orders`, and emails the buyer through Resend with download links that **work once and expire in 7 days**. Files come from the `store-private` bucket. Each link looks like `https://johnnyskyride.com/dl/?t=…`; the page there (file `dl/index.html`) asks the `dl` edge function to use up the link and hand over a 5-minute file link. Opening the page doesn't use the link up; only tapping Download does. Links live in the `download_tokens` table (`used_at` shows when one was used).
 3. Buyer is sent back to the site with a thank-you banner.
 
-Store rows (`store_products`, column `item`): eight $2 singles, `skyforge`, `skyforge-mobile`, `skyforge-mobile-sale`. The `skyforge` row delivers **two files**: `skyforge/SkyForge-VST3.zip` and `skyforge-mobile/SkyForge-Mobile.apk` (the Android app is included). Music singles also get a 320 kbps MP3 when the download is FLAC.
+Store rows (`store_products`, column `item`): eleven $2 singles, `skyforge`, `skyforge-mobile`, `skyforge-mobile-sale`. The `skyforge` row delivers **two files**: `skyforge/SkyForge-VST3.zip` and `skyforge-mobile/SkyForge-Mobile.apk` (the Android app is included). Music singles also get a 320 kbps MP3 when the download is FLAC.
 
 ### Recipe 3a: swap the SkyForge Mobile APK
 1. Supabase dashboard → Storage → `store-private` → folder `skyforge-mobile`.
@@ -231,6 +231,8 @@ The Home page (johnnyskyride.com/) is a tile grid. The old feed (posts, replies,
 - **Store:** `releasedAt` on each product in the `jsr-products` block at the top of index.html (SkyForge 2026-10-18, SkyForge Mobile 2026-10-31). `featureImage` and `featureSub` set the tile's picture and small line.
 
 Anything dated in the future is skipped until that date, so timed releases take over the tile on their own. Items without a date are never featured.
+
+**Pinning the Featured tile:** to keep a music release in the Featured box when a newer item goes up, set `"featured": true` in that row's `data` JSON (Table Editor → `releases` → the row). The Music tile still shows the newest dated song. Only one pin is needed; if more than one row is pinned, the newest pinned item wins. To release the pin, remove `featured` from `data`. Yakoke is pinned this way so DadFunk (and later singles) can go live without taking over the home Featured tile.
 
 **Adding a new item:** give it a date. For a timed single, the `release_at` you already set is enough. For a store item, add `"releasedAt": "YYYY-MM-DD"` (plus `label`, `featureImage`, `featureSub`) to its `jsr-products` entry. For a new collection, add `releasedAt` to it. For a hand-added song, add `data-released="YYYY-MM-DD"` to its `<div class="song">`. Then run `python3 tools/build-pages.py` and commit.
 

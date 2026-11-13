@@ -2719,7 +2719,7 @@ async function loadReleases(){
   }
   RELEASES_SHOWN = key;
   renderReleases(live, p => signed[p] || "");
-  HOME_RELEASES = live.map(r => ({ kind: "Music", date: r.release_at, title: (r.data || {}).title, img: signed[(r.data || {}).cover] || "", sub: r.section === "band" ? "Johnny & The Bots" : "solo - single", go: () => openSong("song-" + r.slug, r.section === "band" ? "band" : "solo"), href: "/music/" }));
+  HOME_RELEASES = live.map(r => ({ kind: "Music", date: r.release_at, title: (r.data || {}).title, img: signed[(r.data || {}).cover] || "", sub: r.section === "band" ? "Johnny & The Bots" : "solo - single", featured: !!(r.data || {}).featured, go: () => openSong("song-" + r.slug, r.section === "band" ? "band" : "solo"), href: "/music/" }));
   renderHome();
   const sc = document.getElementById("solo-count");   // 4 original singles plus every solo release that is live
   if (sc) sc.textContent = 4 + live.filter(r => r.section !== "band").length;
@@ -3714,6 +3714,7 @@ renderCollections("nfts");
 
 // ---- Home tile grid. Featured = newest LIVE item by date across music (static data-released + public.releases),
 // Collections (COLLECTIONS.<kind>.releasedAt) and Store (#jsr-products releasedAt). Future dates never show.
+// A release with data.featured === true stays in the Featured tile even if a newer item exists.
 let HOME_RELEASES = [];
 function homeCandidates(){
   const now = Date.now(), out = [];
@@ -3737,7 +3738,7 @@ function setTile(el, it, label){
 }
 async function renderHome(){
   const all = homeCandidates();
-  const feat = all[0];
+  const feat = all.find(x => x.featured) || all[0];
   if (feat) setTile(document.getElementById("hm-feat"), feat, "Featured · " + feat.kind);
   const music = all.find(x => x.kind === "Music");
   if (music) setTile(document.getElementById("hm-music"), music, "Music");
