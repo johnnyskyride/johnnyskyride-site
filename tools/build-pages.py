@@ -102,6 +102,7 @@ def static_songs(src):
     if not m: return []
     sec = m.group(1); band_at = sec.find('id="sub-band"'); out = []
     for s in re.finditer(r'<div class="song" id="song-([a-z0-9-]+)"([^>]*)>(.*?)(?=<div class="song"|\Z)', sec, re.S):
+        if "data-built" in s.group(2): continue   # a timed release written in by release_cards(), not a hand-added single
         h2 = re.search(r"<h2>(.*?)</h2>", s.group(3)); cov = re.search(r'class="cov" src="([^"]+)"', s.group(3))
         if not h2: continue
         rel = re.search(r'data-released="(\d{4}-\d{2}-\d{2})"', s.group(2))
@@ -127,7 +128,7 @@ def live_releases(src):
         if at > now or not d.get("title") or not re.fullmatch(r"[a-z0-9-]+", r.get("slug") or ""): continue
         out.append({"slug": r["slug"], "title": d["title"], "sub": "band" if r.get("section") == "band" else "solo",
                     "cover_path": d.get("cover"), "date": r["release_at"], "price": d.get("price") or "$2",
-                    "featured": bool(d.get("featured"))})
+                    "featured": bool(d.get("featured")), "data": d})
     return out
 
 def release_cover(src, path):
@@ -264,6 +265,58 @@ def apply_sized(src, man):
         return re.sub(r"background-image:url\('[^']*'\)", f"background-image:url('{url}')", t, count=1)
     return re.sub(r'<a class="hm-t[^"]*"[^>]*\bdata-bg="[^"]+"[^>]*>', bg, src)
 
+def release_cards(src, live, man):
+    """Write the LIVE timed releases into the Music section and the right-hand Music card at build time, with
+    the same markup renderReleases() in index.html makes. The page's JS swaps each one in place (same size) for
+    the version with the working Play button, so the songs below no longer jump down after load. Songs that
+    aren't live are never written (live_releases() only returns rows anon can read, with release_at passed)."""
+    if live is None: return src   # Supabase unreachable: leave what's there
+    cards = {"solo": [], "band": []}; side = []
+    for x in live:   # newest first, like the page ends up
+        d = x.get("data") or {}; sid = "song-" + x["slug"]; sub = x["sub"]
+        key = "releases:" + (d.get("cover") or ""); e = man.get(key)
+        cov = ""
+        if e:
+            src540 = next((f"{e['b']}-{w}.webp" for w in e["w"] if w >= 540), f"{e['b']}-{e['w'][-1]}.webp")
+            cov = (f'<img loading="lazy" decoding="async" class="cov" src="{esc(src540)}" srcset="{esc(srcset_for(man, key))}" '
+                   f'sizes="180px" width="{e["o"][0]}" height="{e["o"][1]}" alt="{esc(d.get("title") or "")}">')
+        play = '<button class="play-btn">Play</button>' if (d.get("spotify") or d.get("preview")) else ""
+        links = "\n          ".join(f'<a href="{esc(l.get("url", ""))}" target="_blank">{esc(l.get("label", ""))}</a>' for l in d.get("links") or [])
+        buy = ""
+        if d.get("buy_url"):
+            buy = (f'<a href="{esc(d["buy_url"])}" target="_blank" style="background:#635bff;color:#fff;padding:6px 12px;'
+                   f'border-radius:999px;font-weight:800;text-decoration:none;margin-left:8px">Buy {esc(d.get("price") or "")}</a>')
+        cards[sub].append("\n".join([
+            f'<div class="song" id="{esc(sid)}" data-built="1">',
+            f'        <div style="color:#71767b;font-size:13px">{esc(d.get("meta") or "")}</div>',
+            f'        <h2>{esc(d.get("title") or "")}</h2>',
+            f'        {cov}',
+            f'        {play}',
+            '        <div class="mlinks">',
+            f'          {links}',
+            f'          {buy}</div>',
+            '      </div>']))
+        thumb = f"{e['b']}-{e['w'][0]}.webp" if e else ""
+        artist = "Johnny &amp; The Bots" if sub == "band" else "solo - single"
+        side.append("\n".join([
+            f'<a class="track" href="/music/{esc(x["slug"])}/" data-release="{esc(x["slug"])}" data-built="1">',
+            f'        <img loading="lazy" decoding="async" src="{esc(thumb)}" width="48" height="48" alt="">',
+            f'        <div><div class="t">{esc(d.get("title") or "")}</div><div class="s">{artist}</div></div>',
+            '      </a>']))
+    def put(src, anchor, name, body):
+        block = f"<!-- jsr:rel:{name} (written by tools/build-pages.py) -->{body}<!-- /jsr:rel:{name} -->"
+        rx = re.compile(rf"<!-- jsr:rel:{name} .*?<!-- /jsr:rel:{name} -->", re.S)
+        if rx.search(src): return rx.sub(lambda _: block, src, count=1)
+        if anchor not in src: sys.exit(f"anchor for release block {name} not found")
+        return src.replace(anchor, anchor + block, 1)
+    src = put(src, '<div id="sub-solo">', "solo", "".join(cards["solo"]))
+    src = put(src, '<div id="sub-band" style="display:none">', "band", "".join(cards["band"]))
+    src = put(src, '<h3>Music</h3>', "side", "\n      " + "\n      ".join(side) if side else "")
+    src = re.sub(r'<b id="solo-count">\d+</b>', f'<b id="solo-count">{4 + len(cards["solo"])}</b>', src, count=1)
+    src = re.sub(r'<b id="band-count">\d+</b>', f'<b id="band-count">{2 + len(cards["band"])}</b>', src, count=1)
+    return src
+
+
 def home_tiles(src, songs_static, live, man):
     """Write the Featured and Music Home tiles into the HTML at build time (same pick as renderHome() in
     index.html), so the first paint already shows the right item and image with no JS swap."""
@@ -346,6 +399,7 @@ def main():
             except Exception as e: print(f"warning: couldn't fetch the cover of {x['slug']} ({e})")
     man = build_sized(src, live, covers)
     src = apply_sized(src, man)
+    src = release_cards(src, live, man)
     src, feat_img = home_tiles(src, statics, live, man)
     home = META_RE.sub(lambda _: meta_block("home", pages["home"]), src, count=1)
     if feat_img:   # Home only: start the Featured tile image right away, at high priority

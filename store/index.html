@@ -768,6 +768,8 @@
         <small>One-time personal support via Stripe. Choose $0.50–$10,000 USD with name your price. No subscription, goods, or rewards. Not a charitable donation.</small>
       </aside>
       <button class="exist-reopen" id="exist-reopen" type="button" aria-controls="exist-banner" aria-expanded="false" hidden>Pay Me To Exist ↗</button>
+      <script>/* phones start minimized: set it before the first paint so nothing jumps (initExistBanner keeps it in sync) */
+      (function(){ try { var s = sessionStorage.getItem("jsr-exist-minimized-v1"); if (s === "1" || (s !== "0" && matchMedia("(max-width: 700px)").matches)) { document.getElementById("exist-banner").hidden = true; document.getElementById("exist-reopen").hidden = false; } } catch (e) {} })();</script>
 
       <div class="hm-hd"><h1>Johnny Skyride</h1><div class="hm-sub">Johnny &amp; The Bots · instruments · imagery</div></div>
       <div class="hm-grid" id="hm-grid">
@@ -814,7 +816,7 @@ no one × nothing × nuh uh</div>
           <a href="https://johnnyskyride.itch.io" target="_blank">Itch.io</a>
           <a href="https://unsaid.fyi/johnnyskyride" target="_blank">Unsaid.fyi</a>
         </div>
-        <div class="counts"><div><b id="solo-count">4</b> <span>Solo singles</span></div><div><b id="band-count">2</b> <span>Band singles</span></div></div>
+        <div class="counts"><div><b id="solo-count">6</b> <span>Solo singles</span></div><div><b id="band-count">5</b> <span>Band singles</span></div></div>
       </div>
       <div class="tabs">
         <button class="active" data-tab="posts">Posts</button>
@@ -897,7 +899,25 @@ no one × nothing × nuh uh</div>
         <button class="on" data-sub="solo">Johnny Skyride</button>
         <button data-sub="band">Johnny & The Bots</button>
       </div>
-      <div id="sub-solo"><div class="song" id="song-for-shore">
+      <div id="sub-solo"><!-- jsr:rel:solo (written by tools/build-pages.py) --><div class="song" id="song-dadfunk" data-built="1">
+        <div style="color:#71767b;font-size:13px">solo - single · Nov 13, 2026</div>
+        <h2>DadFunk (World 8-4)</h2>
+        <img loading="lazy" decoding="async" class="cov" src="/assets/s/rel-dadfunk-c4cab924-540.webp" srcset="/assets/s/rel-dadfunk-c4cab924-160.webp 160w, /assets/s/rel-dadfunk-c4cab924-540.webp 540w, /assets/s/rel-dadfunk-c4cab924-720.webp 720w, /assets/s/rel-dadfunk-c4cab924-1024.webp 1024w" sizes="180px" width="1024" height="1024" alt="DadFunk (World 8-4)">
+        <button class="play-btn">Play</button>
+        <div class="mlinks">
+          
+          <a href="https://buy.stripe.com/6oU4gBctA8Fy6OCghK4ow0m" target="_blank" style="background:#635bff;color:#fff;padding:6px 12px;border-radius:999px;font-weight:800;text-decoration:none;margin-left:8px">Buy $2</a></div>
+      </div><div class="song" id="song-den-of-pires" data-built="1">
+        <div style="color:#71767b;font-size:13px">solo - single · Oct 23, 2026</div>
+        <h2>Den Of Pires</h2>
+        <img loading="lazy" decoding="async" class="cov" src="/assets/s/rel-den-of-pires-13bf7760-540.webp" srcset="/assets/s/rel-den-of-pires-13bf7760-160.webp 160w, /assets/s/rel-den-of-pires-13bf7760-540.webp 540w, /assets/s/rel-den-of-pires-13bf7760-720.webp 720w" sizes="180px" width="720" height="720" alt="Den Of Pires">
+        <button class="play-btn">Play</button>
+        <div class="mlinks">
+          <a href="https://open.spotify.com/album/2Oic2fEztslIF3JPBlDyGV" target="_blank">Spotify</a>
+          <a href="https://music.youtube.com/playlist?list=OLAK5uy_nbhpYD5Oh1zC_AJFx8n65lcNrqQIspxZk" target="_blank">YouTube Music</a>
+          <a href="https://www.youtube.com/watch?v=uGMaT6p6sqE" target="_blank">YouTube</a>
+          <a href="https://buy.stripe.com/6oU9AVbpw9JC5Kyd5y4ow0c" target="_blank" style="background:#635bff;color:#fff;padding:6px 12px;border-radius:999px;font-weight:800;text-decoration:none;margin-left:8px">Buy $2</a></div>
+      </div><!-- /jsr:rel:solo --><div class="song" id="song-for-shore">
         <div style="color:#71767b;font-size:13px">solo - single</div>
         <h2>For Shore</h2>
         <img loading="lazy" decoding="async" class="cov" src="/assets/cover-for-shore.jpg" srcset="/assets/s/cover-for-shore-160.webp 160w, /assets/s/cover-for-shore-540.webp 540w, /assets/cover-for-shore.jpg 640w" sizes="180px" data-sz="180px" width="640" height="640" alt="For Shore">
@@ -946,7 +966,33 @@ no one × nothing × nuh uh</div>
           <a href="https://buy.stripe.com/4gMdRb65c4pi6OC0iM4ow04" target="_blank" style="background:#635bff;color:#fff;padding:6px 12px;border-radius:999px;font-weight:800;text-decoration:none;margin-left:8px">Buy $2</a></div>
         
       </div></div>
-      <div id="sub-band" style="display:none"><div class="song" id="song-under-hoof">
+      <div id="sub-band" style="display:none"><!-- jsr:rel:band (written by tools/build-pages.py) --><div class="song" id="song-yakoke" data-built="1">
+        <div style="color:#71767b;font-size:13px">Johnny &amp; The Bots - single · Nov 13, 2026</div>
+        <h2>Yakoke</h2>
+        <img loading="lazy" decoding="async" class="cov" src="/assets/s/rel-yakoke-2b3985ff-540.webp" srcset="/assets/s/rel-yakoke-2b3985ff-160.webp 160w, /assets/s/rel-yakoke-2b3985ff-540.webp 540w, /assets/s/rel-yakoke-2b3985ff-720.webp 720w, /assets/s/rel-yakoke-2b3985ff-1080.webp 1080w, /assets/s/rel-yakoke-2b3985ff-1280.webp 1280w" sizes="180px" width="1280" height="1280" alt="Yakoke">
+        <button class="play-btn">Play</button>
+        <div class="mlinks">
+          
+          <a href="https://buy.stripe.com/9B66oJ79g092a0Od5y4ow0l" target="_blank" style="background:#635bff;color:#fff;padding:6px 12px;border-radius:999px;font-weight:800;text-decoration:none;margin-left:8px">Buy $2</a></div>
+      </div><div class="song" id="song-church-witch" data-built="1">
+        <div style="color:#71767b;font-size:13px">Johnny &amp; The Bots - single · Nov 6, 2026</div>
+        <h2>Church Witch</h2>
+        <img loading="lazy" decoding="async" class="cov" src="/assets/s/rel-church-witch-437a35cc-540.webp" srcset="/assets/s/rel-church-witch-437a35cc-160.webp 160w, /assets/s/rel-church-witch-437a35cc-540.webp 540w, /assets/s/rel-church-witch-437a35cc-720.webp 720w, /assets/s/rel-church-witch-437a35cc-1080.webp 1080w, /assets/s/rel-church-witch-437a35cc-1280.webp 1280w" sizes="180px" width="1280" height="1280" alt="Church Witch">
+        <button class="play-btn">Play</button>
+        <div class="mlinks">
+          <a href="https://open.spotify.com/track/5RDH0Ujl7AaahWozHOXYl9" target="_blank">Spotify</a>
+          <a href="https://music.youtube.com/watch?v=z5rhAiQMBD4" target="_blank">YouTube Music</a>
+          <a href="https://buy.stripe.com/eVqbJ33X49JC0qe5D64ow0h" target="_blank" style="background:#635bff;color:#fff;padding:6px 12px;border-radius:999px;font-weight:800;text-decoration:none;margin-left:8px">Buy $2</a></div>
+      </div><div class="song" id="song-oceans-deep" data-built="1">
+        <div style="color:#71767b;font-size:13px">Johnny &amp; The Bots - single · Oct 30, 2026</div>
+        <h2>Oceans Deep</h2>
+        <img loading="lazy" decoding="async" class="cov" src="/assets/s/rel-oceans-deep-2e5d5290-540.webp" srcset="/assets/s/rel-oceans-deep-2e5d5290-160.webp 160w, /assets/s/rel-oceans-deep-2e5d5290-540.webp 540w, /assets/s/rel-oceans-deep-2e5d5290-720.webp 720w, /assets/s/rel-oceans-deep-2e5d5290-1080.webp 1080w, /assets/s/rel-oceans-deep-2e5d5290-1280.webp 1280w" sizes="180px" width="1280" height="1280" alt="Oceans Deep">
+        <button class="play-btn">Play</button>
+        <div class="mlinks">
+          <a href="https://open.spotify.com/track/7ruvmCG7CfMpjiTKY3FYOn" target="_blank">Spotify</a>
+          <a href="https://music.youtube.com/watch?v=S6a14F_xAv0" target="_blank">YouTube Music</a>
+          <a href="https://buy.stripe.com/7sYcN7gJQ1d65KyaXq4ow0e" target="_blank" style="background:#635bff;color:#fff;padding:6px 12px;border-radius:999px;font-weight:800;text-decoration:none;margin-left:8px">Buy $2</a></div>
+      </div><!-- /jsr:rel:band --><div class="song" id="song-under-hoof">
         <div style="color:#71767b;font-size:13px">Current band single</div>
         <h2>Under Hoof</h2>
         <img loading="lazy" decoding="async" class="cov" src="/assets/cover-under-hoof.jpg" srcset="/assets/s/cover-under-hoof-160.webp 160w, /assets/s/cover-under-hoof-540.webp 540w, /assets/cover-under-hoof.jpg 640w" sizes="180px" data-sz="180px" width="640" height="640" alt="Under Hoof">
@@ -1149,7 +1195,27 @@ no one × nothing × nuh uh</div>
 
   <aside class="right">
     <div class="card">
-      <h3>Music</h3>
+      <h3>Music</h3><!-- jsr:rel:side (written by tools/build-pages.py) -->
+      <a class="track" href="/music/dadfunk/" data-release="dadfunk" data-built="1">
+        <img loading="lazy" decoding="async" src="/assets/s/rel-dadfunk-c4cab924-160.webp" width="48" height="48" alt="">
+        <div><div class="t">DadFunk (World 8-4)</div><div class="s">solo - single</div></div>
+      </a>
+      <a class="track" href="/music/yakoke/" data-release="yakoke" data-built="1">
+        <img loading="lazy" decoding="async" src="/assets/s/rel-yakoke-2b3985ff-160.webp" width="48" height="48" alt="">
+        <div><div class="t">Yakoke</div><div class="s">Johnny &amp; The Bots</div></div>
+      </a>
+      <a class="track" href="/music/church-witch/" data-release="church-witch" data-built="1">
+        <img loading="lazy" decoding="async" src="/assets/s/rel-church-witch-437a35cc-160.webp" width="48" height="48" alt="">
+        <div><div class="t">Church Witch</div><div class="s">Johnny &amp; The Bots</div></div>
+      </a>
+      <a class="track" href="/music/oceans-deep/" data-release="oceans-deep" data-built="1">
+        <img loading="lazy" decoding="async" src="/assets/s/rel-oceans-deep-2e5d5290-160.webp" width="48" height="48" alt="">
+        <div><div class="t">Oceans Deep</div><div class="s">Johnny &amp; The Bots</div></div>
+      </a>
+      <a class="track" href="/music/den-of-pires/" data-release="den-of-pires" data-built="1">
+        <img loading="lazy" decoding="async" src="/assets/s/rel-den-of-pires-13bf7760-160.webp" width="48" height="48" alt="">
+        <div><div class="t">Den Of Pires</div><div class="s">solo - single</div></div>
+      </a><!-- /jsr:rel:side -->
       <a class="track" href="#" data-title="Under Hoof" onclick="playTrack('Under Hoof','3KZrBSdwQiLpIvStywuDDf',null);openSong('song-under-hoof','band');return false;">
         <img loading="lazy" decoding="async" src="/assets/under-hoof-1080.jpg" srcset="/assets/s/under-hoof-1080-160.webp 160w, /assets/s/under-hoof-1080-540.webp 540w, /assets/s/under-hoof-1080-720.webp 720w, /assets/under-hoof-1080.jpg 1080w" sizes="48px" data-sz="48px" width="48" height="48" alt="">
         <div><div class="t">Under Hoof</div><div class="s">Johnny & The Bots</div></div>
@@ -2747,6 +2813,9 @@ async function loadReleases(){
   const { data, error } = await sb.from("releases").select("slug,release_at,section,data").order("release_at", { ascending: false });
   if (error || !data) return;
   const live = data.filter(r => new Date(r.release_at).getTime() <= Date.now());   // owner sees future rows; show only live ones
+  // songs written into the page at build time (data-built) that are no longer live releases: take them out
+  const liveSlugs = new Set(live.map(r => r.slug));
+  document.querySelectorAll("#music .song[data-built], aside.right a.track[data-built]").forEach(el => { if (!liveSlugs.has(el.dataset.release || el.id.replace(/^song-/, ""))) el.remove(); });
   const key = live.map(r => r.slug + JSON.stringify(r.data)).join("|");
   if (!live.length || key === RELEASES_SHOWN) return;
   const paths = [];   // covers with a public sized copy (built after the song went live) skip signing
