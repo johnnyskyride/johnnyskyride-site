@@ -19,12 +19,18 @@ What it does:
     section's meta block, <meta name="jsr-start"> set, and that section marked as the
     visible page, so link-preview crawlers (which don't run JS) see the right tags,
     and direct loads of /music/ etc. open the right section.
+  * Writes a share page for every LIVE song at /music/<slug>/ (title "Song — Artist", its cover as
+    the card image). Songs come from the static singles in the #music section of index.html plus the
+    rows of Supabase public.releases that anon can read (RLS only returns rows whose release_at has
+    passed, and this script double-checks the date), so a scheduled song never gets a page early.
+    Each song's card image is written to assets/og/<slug>.jpg (1200x630), copied from the cover.
+    After a scheduled release goes live, re-run this script and commit to create its page.
   * Writes 404.html, which forwards unknown paths to the matching section or home, and share
     links (/p/, /c/, /ac/) that tools/build-shares.py hasn't built yet straight to the item.
 All asset/script paths in index.html must be root-absolute (/assets/...), because the
 same HTML is served from sub-directories.
 """
-import hashlib, html, json, os, re, sys
+import datetime, hashlib, html, io, json, os, re, sys, urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ORIGIN = "https://johnnyskyride.com"
@@ -78,6 +84,78 @@ def set_start(doc, key):
     doc = doc.replace(f'<button data-page="{key}">', f'<button class="active" data-page="{key}">')
     return doc
 
+
+ARTISTS = {"solo": "Johnny Skyride", "band": "Johnny & The Bots"}
+
+def sb_config(src):
+    u = re.search(r'const SB_URL = "([^"]+)"', src); k = re.search(r'const SB_KEY = "([^"]+)"', src)
+    return (u.group(1), k.group(1)) if u and k else (None, None)
+
+def http(url, key, body=None):
+    req = urllib.request.Request(url, data=None if body is None else json.dumps(body).encode(),
+                                 headers={"apikey": key, "Authorization": "Bearer " + key, "Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=30) as r: return r.read()
+
+def static_songs(src):
+    """The hard-coded singles in the #music section (solo before #sub-band, band after)."""
+    m = re.search(r'<section class="page" id="music">(.*?)</section>', src, re.S)
+    if not m: return []
+    sec = m.group(1); band_at = sec.find('id="sub-band"'); out = []
+    for s in re.finditer(r'<div class="song" id="song-([a-z0-9-]+)"[^>]*>(.*?)(?=<div class="song"|\Z)', sec, re.S):
+        h2 = re.search(r"<h2>(.*?)</h2>", s.group(2)); cov = re.search(r'class="cov" src="([^"]+)"', s.group(2))
+        if not h2: continue
+        out.append({"slug": s.group(1), "title": html.unescape(h2.group(1)), "sub": "band" if 0 <= band_at < s.start() else "solo",
+                    "cover_file": os.path.join(ROOT, cov.group(1).lstrip("/")) if cov else None, "date": ""})
+    return out
+
+def live_releases(src):
+    """Live rows of public.releases via the public (publishable) key. None if Supabase can't be reached."""
+    url, key = sb_config(src)
+    if not url: return None
+    try:
+        rows = json.loads(http(url + "/rest/v1/releases?select=slug,release_at,section,data&order=release_at.desc", key))
+    except Exception as e:
+        print(f"warning: couldn't read releases from Supabase ({e}); existing /music/<slug>/ pages left as they are")
+        return None
+    now = datetime.datetime.now(datetime.timezone.utc); out = []
+    for r in rows:
+        try: at = datetime.datetime.fromisoformat(r["release_at"].replace("Z", "+00:00"))
+        except Exception: continue
+        d = r.get("data") or {}
+        if at > now or not d.get("title") or not re.fullmatch(r"[a-z0-9-]+", r.get("slug") or ""): continue
+        out.append({"slug": r["slug"], "title": d["title"], "sub": "band" if r.get("section") == "band" else "solo",
+                    "cover_path": d.get("cover"), "date": r["release_at"], "price": d.get("price") or "$2"})
+    return out
+
+def release_cover(src, path):
+    url, key = sb_config(src)
+    signed = json.loads(http(f"{url}/storage/v1/object/sign/releases/{path}", key, {"expiresIn": 120}))
+    return http(url + "/storage/v1" + signed["signedURL"], key)
+
+def write_og(slug, data):
+    """1200x630 card: the square cover centred on a dark, blurred copy of itself."""
+    from PIL import Image, ImageFilter, ImageEnhance
+    im = Image.open(io.BytesIO(data)).convert("RGB")
+    W, H = 1200, 630
+    bh = max(H, int(W * im.height / im.width)); top = (bh - H) // 2
+    bg = im.resize((W, bh)).crop((0, top, W, top + H))
+    bg = ImageEnhance.Brightness(bg.filter(ImageFilter.GaussianBlur(40))).enhance(0.45)
+    side = H - 60; fg = im.copy(); fg.thumbnail((side * 4, side), Image.LANCZOS)
+    bg.paste(fg, ((W - fg.width) // 2, (H - fg.height) // 2))
+    os.makedirs(os.path.join(ROOT, "assets", "og"), exist_ok=True)
+    out = os.path.join(ROOT, "assets", "og", slug + ".jpg")
+    buf = io.BytesIO(); bg.save(buf, "JPEG", quality=86, optimize=True, progressive=True)
+    if not os.path.exists(out) or open(out, "rb").read() != buf.getvalue(): open(out, "wb").write(buf.getvalue())
+    return "/assets/og/" + slug + ".jpg"
+
+def song_meta(s, image):
+    artist = ARTISTS[s["sub"]]
+    p = {"path": f"/music/{s['slug']}/", "image": image, "title": f"{s['title']} — {artist}",
+         "description": f"{s['title']} by {artist}. Listen and get the {s.get('price', '$2')} download on johnnyskyride.com.",
+         "alt": f"{s['title']} cover art — {artist}"}
+    extra = f'<meta name="jsr-song" content="{esc(s["slug"])}">\n<meta name="jsr-sub" content="{s["sub"]}">\n'
+    return meta_block("music", p).replace('<meta name="jsr-start" content="music">\n', '<meta name="jsr-start" content="music">\n' + extra)
+
 NOT_FOUND = """<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Johnny Skyride</title><meta name="robots" content="noindex">
@@ -91,6 +169,8 @@ NOT_FOUND = """<!DOCTYPE html>
   // share links (/p/<id>/, /c/<id>/, /ac/<id>/) whose stub page isn't built yet: go straight to the item
   var share = { p: "post-", c: "c-", ac: "ac-" }[seg];
   if (share && parts[1] && /^[A-Za-z0-9_-]+$/.test(parts[1])) { location.replace("/#" + share + parts[1]); return; }
+  // a song page that isn't built yet: open the Music section on that song
+  if (seg === "music" && parts[1] && /^[a-z0-9-]+$/.test(parts[1])) { location.replace("/music/#song-" + parts[1]); return; }
   var dest = paths.indexOf("/" + seg + "/") >= 0 ? "/" + seg + "/" : "/";
   location.replace(dest + location.search + location.hash);
 })();
@@ -109,6 +189,12 @@ def main():
     if home != src:
         open(SRC, "w", encoding="utf-8").write(home)
     written = ["index.html"]
+    statics = static_songs(src); live = live_releases(src)
+    songs = (live or []) + statics          # newest DB releases first, then the original singles
+    if "music" in pages and songs:
+        names = ", ".join(x["title"] for x in songs)
+        pages["music"] = dict(pages["music"], description="Johnny Skyride · Johnny & The Bots — " + names,
+                              alt="Music — " + names)
     for key, p in pages.items():
         if key == "home": continue
         slug = p["path"].strip("/")
@@ -129,6 +215,20 @@ def main():
         os.makedirs(os.path.join(ROOT, "store", slug), exist_ok=True)
         open(os.path.join(ROOT, "store", slug, "index.html"), "w", encoding="utf-8").write(doc)
         written.append(f"store/{slug}/index.html")
+    # Song pages (/music/<slug>/): the Music section with that song's meta; the page's JS opens the song.
+    music_doc = open(os.path.join(ROOT, pages["music"]["path"].strip("/"), "index.html"), encoding="utf-8").read()
+    for x in songs:
+        try:
+            if x.get("cover_file"): img = write_og(x["slug"], open(x["cover_file"], "rb").read())
+            elif x.get("cover_path"): img = write_og(x["slug"], release_cover(src, x["cover_path"]))
+            else: img = pages["music"]["image"]
+        except Exception as e:
+            print(f"warning: no card image for {x['slug']} ({e}); using the Music image")
+            img = pages["music"]["image"]
+        doc = META_RE.sub(lambda _: song_meta(x, img), music_doc, count=1)
+        os.makedirs(os.path.join(ROOT, "music", x["slug"]), exist_ok=True)
+        open(os.path.join(ROOT, "music", x["slug"], "index.html"), "w", encoding="utf-8").write(doc)
+        written.append(f"music/{x['slug']}/index.html")
     paths = json.dumps([p["path"] for k, p in pages.items() if k != "home"])
     open(os.path.join(ROOT, "404.html"), "w", encoding="utf-8").write(NOT_FOUND % paths)
     written.append("404.html")

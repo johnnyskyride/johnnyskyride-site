@@ -32,11 +32,30 @@
   var T = { "for-shore": ["For Shore", "/assets/cover-for-shore.jpg"], "slow-bum": ["Slow Bum", "/assets/cover-slow-bum.jpg"],
     "owl-knight": ["Owl Knight", "/assets/cover-owl-knight.jpg"], "a-bunny": ["A-Bunny", "/assets/cover-a-bunny.jpg"],
     "under-hoof": ["Under Hoof", "/assets/cover-under-hoof.jpg"], "waste-bin": ["Waste Bin", "/assets/cover-waste-bin.jpg"] };
-  var t = T[new URLSearchParams(location.search).get("track")];
-  if (t) {
-    document.getElementById("h").textContent = "Thanks for buying " + t[0] + " 🎧";
-    document.title = "Thanks for buying " + t[0] + " · Johnny Skyride";
-    if (t[1]) { var c = document.getElementById("cov"); c.src = t[1]; c.alt = t[0]; c.style.display = "block"; }
+  var slug = new URLSearchParams(location.search).get("track") || "";
+  function showTrack(title, cover){
+    document.getElementById("h").textContent = "Thanks for buying " + title + " 🎧";
+    document.title = "Thanks for buying " + title + " · Johnny Skyride";
+    if (cover) { var c = document.getElementById("cov"); c.onerror = function(){ c.style.display = "none"; }; c.src = cover; c.alt = title; c.style.display = "block"; }
+  }
+  var t = T[slug];
+  if (t) showTrack(t[0], t[1]);
+  else if (/^[a-z0-9-]{1,80}$/.test(slug) && window.fetch) {
+    // newer singles live in Supabase public.releases (anon only sees released rows); the cover is signed for a few minutes.
+    // Anything that fails just leaves the generic thank-you above. Delivery itself is the emailed link, untouched here.
+    var SB = "https://wsrzkxmwufwceqqbstrj.supabase.co", K = "sb_publishable_AeWIrO__Ct7bxwWRKx63Gg_us11qIM3";
+    var H = { apikey: K, Authorization: "Bearer " + K, "Content-Type": "application/json" };
+    fetch(SB + "/rest/v1/releases?select=slug,data&slug=eq." + slug, { headers: H })
+      .then(function(r){ return r.ok ? r.json() : []; })
+      .then(function(rows){
+        var d = rows && rows[0] && rows[0].data; if (!d || !d.title) return;
+        showTrack(d.title, "");
+        if (!d.cover) return;
+        return fetch(SB + "/storage/v1/object/sign/releases/" + d.cover.split("/").map(encodeURIComponent).join("/"), { method: "POST", headers: H, body: JSON.stringify({ expiresIn: 3600 }) })
+          .then(function(r){ return r.ok ? r.json() : null; })
+          .then(function(j){ if (j && j.signedURL) showTrack(d.title, SB + "/storage/v1" + j.signedURL); });
+      })
+      .catch(function(){});
   }
 </script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"e7683559ff7748338c9c8a94d8551f62"}'></script>

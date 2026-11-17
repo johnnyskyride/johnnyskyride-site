@@ -38,7 +38,7 @@ The site owner is **johnnyskyride@outlook.com**, and that must stay the **only**
 ## 2. How the site is built
 
 - `index.html` is the whole site (all sections, styles and code in one file).
-- After editing it, run `python3 tools/build-pages.py`. It copies `index.html` into each section's page so link previews work: `music/`, `collections/`, `imagery/`, `articles/`, `members/`, `sessions/`, and the store pages `store/`, `store/skyforge/`, `store/skyforge-mobile/`, `store/sessions/`. Commit `index.html` **together with** all those generated files.
+- After editing it, run `python3 tools/build-pages.py`. It copies `index.html` into each section's page so link previews work: `music/`, `collections/`, `imagery/`, `articles/`, `members/`, `sessions/`, the store pages `store/`, `store/skyforge/`, `store/skyforge-mobile/`, `store/sessions/`, and one `music/<slug>/` page per live song (plus `assets/og/<slug>.jpg`). It needs Python with Pillow (`pip install pillow`) and internet access to read live releases from Supabase. Commit `index.html` **together with** all those generated files.
 - `tools/build-shares.py` makes the share-preview pages in `/p/` (posts), `/c/` (comments), `/ac/` (article comments) and images in `/share/`. You never run this yourself: the GitHub Action `.github/workflows/share-pages.yml` runs it every ~5 minutes and commits "share pages: update previews".
 - `thanks.html`, `404.html`, icons and `assets/` (images) are plain files.
 
@@ -80,7 +80,10 @@ Store rows (`store_products`, column `item`): eleven $2 singles, `skyforge`, `sk
 
 ### Recipe 3d: add a new single / timed release
 - Releases are rows in the `releases` table: `slug`, `release_at` (when it goes live), `section` (`solo` or `band`), and `data` (title, meta, cover, preview, price, buy_url, links, spotify). The site checks every 60 seconds and shows a release once its time passes; the "Solo singles" count updates itself.
-- Easiest: in Table Editor, duplicate an existing row (e.g. `oceans-deep`) and change the values. Cover/preview files go in the `media` bucket.
+- Easiest: in Table Editor, duplicate an existing row (e.g. `oceans-deep`) and change the values. Cover/preview files go in the private `releases` bucket under `<slug>/` (e.g. `yakoke/cover.jpg`); they stay unreadable until `release_at`.
+- **Share page (after it goes live):** every live song has its own link, `johnnyskyride.com/music/<slug>/`, with its title ("Song — Artist") and cover on X/Facebook/iMessage previews. **After a release goes live, run `python3 tools/build-pages.py` and commit to create its share page** (it also writes the card image `assets/og/<slug>.jpg` and refreshes the /music/ description). The script reads releases with the site's public key, so it only ever sees songs that are already live; a scheduled song can't get a page early. Until you rebuild, `/music/<slug>/` still works for visitors (404.html forwards to the song) but has no song preview card.
+- Each song card on the Music page has a ↗ Share button (share sheet on phones, copy link on desktop).
+- The thank-you page (`thanks.html?track=<slug>`) looks the song up by slug, so new singles show their title and cover there automatically; set the Payment Link's after-payment redirect to `https://johnnyskyride.com/thanks.html?track=<slug>`.
 - To sell it: make a $2 Payment Link in Stripe, upload the audio to the private bucket (check an existing single's `file_path` for the folder), and add a `store_products` row copying an existing single (kind, title, artist, payment_link, file_path, download_name, release_slug).
 
 ### Recipe 3e: turn off a payment link
@@ -285,7 +288,9 @@ Visitor stats are in Cloudflare Web Analytics: sign in at dash.cloudflare.com, t
 
 Homepage-only banner lives inside `#home`; other navigation sections do not show it.
 The corner X minimizes it for the current tab session (`sessionStorage`, key
-`jsr-exist-minimized-v1`); a small reopen button restores it. Blocked storage falls
+`jsr-exist-minimized-v1`); a small reopen button restores it. On phones (under 700px wide)
+it starts minimized so the Featured tile is on the first screen; tapping reopen keeps it
+open for that session. Desktop starts open. Blocked storage falls
 back to in-memory state. Keyboard focus follows minimize/reopen. Checkout anchors
 also work without JavaScript. Rebuild with `python3 tools/build-pages.py` after edits.
 
