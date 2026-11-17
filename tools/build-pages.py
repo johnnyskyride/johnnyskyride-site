@@ -429,6 +429,9 @@ def main():
         if not re.fullmatch(r"[a-z0-9-]+", slug): sys.exit(f"bad product slug: {slug}")
         p = dict(p, path=f"/store/{slug}/")
         doc = META_RE.sub(lambda _: meta_block("store", p), store_doc, count=1)
+        # open on this product alone (what openProduct() does at runtime), so the first paint doesn't jump
+        doc = doc.replace('<section class="page on" id="store"', '<section class="page on pv" id="store"', 1)
+        doc = re.sub(rf'(<div class="[^"]*\bst-item)("[^>]*data-product="{re.escape(slug)}")', r"\1 pv-on\2", doc, count=1)
         hero = {"skyforge": "sf-hero", "skyforge-mobile": "sm-hero"}.get(slug)
         if hero:   # this product's big picture is on the first screen here: load it now, not lazily
             doc = re.sub(rf'(<img class="sf-hero" id="{hero}"[^>]*?) loading="lazy"', r'\1 fetchpriority="high"', doc, count=1)
