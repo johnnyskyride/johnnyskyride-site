@@ -101,11 +101,13 @@ def static_songs(src):
     m = re.search(r'<section class="page" id="music">(.*?)</section>', src, re.S)
     if not m: return []
     sec = m.group(1); band_at = sec.find('id="sub-band"'); out = []
-    for s in re.finditer(r'<div class="song" id="song-([a-z0-9-]+)"[^>]*>(.*?)(?=<div class="song"|\Z)', sec, re.S):
-        h2 = re.search(r"<h2>(.*?)</h2>", s.group(2)); cov = re.search(r'class="cov" src="([^"]+)"', s.group(2))
+    for s in re.finditer(r'<div class="song" id="song-([a-z0-9-]+)"([^>]*)>(.*?)(?=<div class="song"|\Z)', sec, re.S):
+        h2 = re.search(r"<h2>(.*?)</h2>", s.group(3)); cov = re.search(r'class="cov" src="([^"]+)"', s.group(3))
         if not h2: continue
+        rel = re.search(r'data-released="(\d{4}-\d{2}-\d{2})"', s.group(2))
         out.append({"slug": s.group(1), "title": html.unescape(h2.group(1)), "sub": "band" if 0 <= band_at < s.start() else "solo",
-                    "cover_file": os.path.join(ROOT, cov.group(1).lstrip("/")) if cov else None, "date": ""})
+                    "cover_file": os.path.join(ROOT, cov.group(1).lstrip("/")) if cov else None, "cover_src": cov.group(1) if cov else None,
+                    "date": "", "released": rel.group(1) if rel else None})
     return out
 
 def live_releases(src):
@@ -124,7 +126,8 @@ def live_releases(src):
         d = r.get("data") or {}
         if at > now or not d.get("title") or not re.fullmatch(r"[a-z0-9-]+", r.get("slug") or ""): continue
         out.append({"slug": r["slug"], "title": d["title"], "sub": "band" if r.get("section") == "band" else "solo",
-                    "cover_path": d.get("cover"), "date": r["release_at"], "price": d.get("price") or "$2"})
+                    "cover_path": d.get("cover"), "date": r["release_at"], "price": d.get("price") or "$2",
+                    "featured": bool(d.get("featured"))})
     return out
 
 def release_cover(src, path):
@@ -156,6 +159,155 @@ def song_meta(s, image):
     extra = f'<meta name="jsr-song" content="{esc(s["slug"])}">\n<meta name="jsr-sub" content="{s["sub"]}">\n'
     return meta_block("music", p).replace('<meta name="jsr-start" content="music">\n', '<meta name="jsr-start" content="music">\n' + extra)
 
+
+# ---- Sized image copies (assets/s/) -------------------------------------------------------------
+# Smaller WebP copies of the site's images so phones don't download full-size photos. Originals are
+# never changed (full-size viewing and downloads keep using them). Two sources:
+#   * repo images: assets/*.jpg|png (not og-*) and assets/collections/*.jpg -> assets/s/<name>-<w>.webp
+#   * LIVE release covers (private "releases" bucket, so only songs whose release_at has passed) ->
+#     assets/s/rel-<slug>-<hash>-<w>.webp. Scheduled songs never get a copy before they go live.
+# The list of copies goes into index.html as <script type="application/json" id="jsr-sized">, which the
+# page's JS reads, and this script fills srcset/sizes on every <img data-sz="..."> and the background of
+# every Home tile with data-bg="..." from it. Copies are only re-encoded when their source changes.
+SIZES = [160, 540, 720, 1080, 1600]
+WEBP_Q = 85
+# CSS size of each Home tile kind at 390px phone (3x) / 1280px desktop (2x) widths: (w, h) in CSS px
+TILES = {"big": ((350, 334), (560, 374)), "small": ((168, 160), (273, 180)), "wide": ((350, 160), (560, 180))}
+SIZED_RE = re.compile(r'<script type="application/json" id="jsr-sized">(.*?)</script>', re.S)
+
+def _webp(im, w, out):
+    from PIL import Image
+    h = max(1, round(im.height * w / im.width))
+    r = im.resize((w, h), Image.LANCZOS) if w != im.width else im
+    buf = io.BytesIO(); r.save(buf, "WEBP", quality=WEBP_Q, method=6)
+    if not os.path.exists(out) or open(out, "rb").read() != buf.getvalue(): open(out, "wb").write(buf.getvalue())
+
+def _open(data):
+    from PIL import Image, ImageOps
+    im = ImageOps.exif_transpose(Image.open(io.BytesIO(data)))
+    alpha = im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info)
+    return im.convert("RGBA" if alpha else "RGB")
+
+def _tile_pick(base, ws, ow, oh, orig):
+    """URL per Home tile kind: the smallest copy that is still >= the pixels the tile shows (cover-fit)."""
+    a = ow / oh; out = {}
+    for kind, ((mw, mh), (dw, dh)) in TILES.items():
+        need = max(3 * max(mw, mh * a), 2 * max(dw, dh * a))
+        pick = next((w for w in ws if w >= need * 0.96), None)
+        out[kind] = f"{base}-{pick}.webp" if pick else (orig or f"{base}-{ws[-1]}.webp")
+    return out
+
+def build_sized(src, live, cover_bytes):
+    old = {}
+    m = SIZED_RE.search(src)
+    if m:
+        try: old = json.loads(m.group(1))
+        except Exception: old = {}
+    sdir = os.path.join(ROOT, "assets", "s"); os.makedirs(sdir, exist_ok=True)
+    man, keep = {}, set()
+    files = sorted([f for f in os.listdir(os.path.join(ROOT, "assets")) if re.fullmatch(r"[a-z0-9-]+\.(jpg|jpeg|png)", f) and not f.startswith("og")])
+    files = ["assets/" + f for f in files] + ["assets/collections/" + f for f in sorted(os.listdir(os.path.join(ROOT, "assets", "collections"))) if f.endswith(".jpg")]
+    for rel in files:
+        key = "/" + rel; data = open(os.path.join(ROOT, rel), "rb").read(); h = hashlib.sha256(data).hexdigest()[:8]
+        name = re.sub(r"\.(jpg|jpeg|png)$", "", rel.split("/")[-1]); base = "/assets/s/" + name
+        o = old.get(key) or {}
+        im = None; ow, oh = (o.get("o") or [0, 0]) if o.get("h") == h else (0, 0)
+        if not ow: im = _open(data); ow, oh = im.size
+        ws = [w for w in SIZES if w < ow * 0.9]
+        if not ws: continue
+        for w in ws:
+            out = os.path.join(sdir, f"{name}-{w}.webp"); keep.add(out)
+            if o.get("h") != h or not os.path.exists(out):
+                im = im or _open(data); _webp(im, w, out)
+        man[key] = {"b": base, "w": ws, "o": [ow, oh], "h": h, "t": _tile_pick(base, ws, ow, oh, key)}
+    if live is None:   # Supabase unreachable: keep the release copies we already have
+        for k, v in old.items():
+            if k.startswith("releases:"):
+                man[k] = v; keep.update(os.path.join(sdir, f"{v['b'].split('/')[-1]}-{w}.webp") for w in v["w"])
+    else:
+        for x in live:
+            cp = x.get("cover_path"); data = cover_bytes.get(cp) if cp else None
+            if not data: continue
+            h = hashlib.sha256(data).hexdigest()[:8]; name = f"rel-{x['slug']}-{h}"; base = "/assets/s/" + name
+            im = _open(data); ow, oh = im.size
+            top = min(ow, SIZES[-1]); ws = sorted(set([w for w in SIZES if w < top] + [top]))
+            for w in ws:
+                out = os.path.join(sdir, f"{name}-{w}.webp"); keep.add(out)
+                if not os.path.exists(out): _webp(im, w, out)
+            man["releases:" + cp] = {"b": base, "w": ws, "o": [ow, oh], "h": h, "t": _tile_pick(base, ws, ow, oh, None)}
+    for f in os.listdir(sdir):
+        if os.path.join(sdir, f) not in keep: os.remove(os.path.join(sdir, f))
+    return man
+
+def srcset_for(man, key):
+    e = man.get(key)
+    if not e: return None
+    parts = [f"{e['b']}-{w}.webp {w}w" for w in e["w"]]
+    if not key.startswith("releases:"): parts.append(f"{key} {e['o'][0]}w")
+    return ", ".join(parts)
+
+def apply_sized(src, man):
+    """Embed the manifest; fill srcset/sizes on <img data-sz> and backgrounds on tiles with data-bg."""
+    blob = json.dumps(man, separators=(",", ":"), sort_keys=True)
+    tag = f'<script type="application/json" id="jsr-sized">{blob}</script>'
+    src = SIZED_RE.sub(lambda _: tag, src, count=1) if SIZED_RE.search(src) else src.replace('<script type="application/json" id="jsr-products">', tag + '\n<script type="application/json" id="jsr-products">', 1)
+    def img(m):
+        t = m.group(0); sz = re.search(r'data-sz="([^"]+)"', t).group(1); sm = re.search(r' src="([^"]+)"', t)
+        ss = srcset_for(man, sm.group(1)) if sm else None
+        t = re.sub(r' (srcset|sizes)="[^"]*"', "", t)
+        return t if not ss else t.replace(sm.group(0), f'{sm.group(0)} srcset="{ss}" sizes="{sz}"', 1)
+    src = re.sub(r'<img\b[^>]*\bdata-sz="[^"]+"[^>]*>', img, src)
+    def bg(m):
+        t = m.group(0); key = re.search(r'data-bg="([^"]+)"', t).group(1)
+        kind = "big" if "hm-big" in t else "wide" if "hm-w" in t else "small"
+        url = ((man.get(key) or {}).get("t") or {}).get(kind, key)
+        return re.sub(r"background-image:url\('[^']*'\)", f"background-image:url('{url}')", t, count=1)
+    return re.sub(r'<a class="hm-t[^"]*"[^>]*\bdata-bg="[^"]+"[^>]*>', bg, src)
+
+def home_tiles(src, songs_static, live, man):
+    """Write the Featured and Music Home tiles into the HTML at build time (same pick as renderHome() in
+    index.html), so the first paint already shows the right item and image with no JS swap."""
+    cands = []
+    day = lambda d: d + "T12:00:00-06:00"
+    def ts(d):
+        try: return datetime.datetime.fromisoformat(d.replace("Z", "+00:00")).timestamp()
+        except Exception: return None
+    for x in songs_static:
+        if not x.get("released"): continue
+        e = man.get(x.get("cover_src") or "")
+        cands.append({"kind": "Music", "date": day(x["released"]), "title": x["title"], "sub": ARTISTS[x["sub"]] if x["sub"] == "band" else "solo - single",
+                      "t": (e or {}).get("t") or {k: x.get("cover_src") for k in TILES}, "href": f"/music/{x['slug']}/", "song": x["slug"], "s": x["sub"]})
+    for x in live or []:
+        e = man.get("releases:" + (x.get("cover_path") or ""))
+        cands.append({"kind": "Music", "date": x["date"], "title": x["title"], "sub": ARTISTS[x["sub"]] if x["sub"] == "band" else "solo - single",
+                      "t": (e or {}).get("t"), "href": f"/music/{x['slug']}/", "featured": x.get("featured"), "song": x["slug"], "s": x["sub"]})
+    cm = re.search(r"const COLLECTIONS = \{(.*?)\n\};", src, re.S)
+    for d in re.findall(r'releasedAt:\s*"(\d{4}-\d{2}-\d{2})"', cm.group(1) if cm else ""):
+        cands.append({"kind": "Collection", "date": day(d)})
+    m2 = re.search(r'<script type="application/json" id="jsr-products">(.*?)</script>', src, re.S)
+    for slug, p in (json.loads(m2.group(1)) if m2 else {}).items():
+        if not p.get("releasedAt"): continue
+        img = p.get("featureImage") or p.get("image"); e = man.get(img)
+        cands.append({"kind": "Store", "date": day(p["releasedAt"]), "title": p.get("label") or slug, "sub": p.get("featureSub") or "",
+                      "t": (e or {}).get("t") or {k: img for k in TILES}, "href": f"/store/{slug}/", "product": slug})
+    now = datetime.datetime.now(datetime.timezone.utc).timestamp()
+    cands = [c for c in cands if ts(c["date"]) is not None and ts(c["date"]) <= now]
+    cands.sort(key=lambda c: -ts(c["date"]))   # stable, like Array.sort in the page
+    feat = next((c for c in cands if c.get("featured")), cands[0] if cands else None)
+    music = next((c for c in cands if c["kind"] == "Music"), None)
+    def tile(tid, c, label, kind, cls):
+        if not c or c["kind"] == "Collection" or not c.get("t"): return None
+        data = f' data-song="{esc(c["song"])}" data-sub="{c["s"]}"' if c.get("song") else f' data-product="{esc(c["product"])}"' if c.get("product") else ""
+        return (f'<a class="{cls}" id="{tid}" href="{esc(c["href"])}"{data} data-built="1" style="background-image:url(\'{esc(c["t"][kind])}\')">'
+                f'<div class="hm-l"><span class="hm-k">{esc(label)}</span><b>{esc(c["title"])}</b><span class="hm-m">{esc(c.get("sub") or "")}</span></div></a>')
+    pre = None
+    for tid, c, label, kind, cls in (("hm-feat", feat, "Featured · " + (feat or {}).get("kind", ""), "big", "hm-t hm-big"), ("hm-music", music, "Music", "small", "hm-t")):
+        h = tile(tid, c, label, kind, cls)
+        if not h: continue
+        src = re.sub(rf'<a class="[^"]*" id="{tid}".*?</a>', lambda _: h, src, count=1, flags=re.S)
+        if tid == "hm-feat": pre = c["t"][kind]
+    return src, pre
+
 NOT_FOUND = """<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Johnny Skyride</title><meta name="robots" content="noindex">
@@ -184,13 +336,24 @@ def main():
     if not m: sys.exit("jsr-pages config not found in index.html")
     pages = json.loads(m.group(1))
     if not META_RE.search(src): sys.exit("jsr:meta markers not found in index.html")
-    home = META_RE.sub(lambda _: meta_block("home", pages["home"]), src, count=1)
-    home = set_start(home, "home")
-    if home != src:
-        open(SRC, "w", encoding="utf-8").write(home)
-    written = ["index.html"]
+    orig_src = src
     statics = static_songs(src); live = live_releases(src)
     songs = (live or []) + statics          # newest DB releases first, then the original singles
+    covers = {}                             # live release covers (private bucket), fetched once
+    for x in live or []:
+        if x.get("cover_path"):
+            try: covers[x["cover_path"]] = release_cover(src, x["cover_path"])
+            except Exception as e: print(f"warning: couldn't fetch the cover of {x['slug']} ({e})")
+    man = build_sized(src, live, covers)
+    src = apply_sized(src, man)
+    src, feat_img = home_tiles(src, statics, live, man)
+    home = META_RE.sub(lambda _: meta_block("home", pages["home"]), src, count=1)
+    if feat_img:   # Home only: start the Featured tile image right away, at high priority
+        home = home.replace("<!-- /jsr:meta -->", f'<link rel="preload" as="image" href="{esc(feat_img)}" fetchpriority="high">\n<!-- /jsr:meta -->', 1)
+    home = set_start(home, "home")
+    if home != orig_src:
+        open(SRC, "w", encoding="utf-8").write(home)
+    written = ["index.html"]
     if "music" in pages and songs:
         names = ", ".join(x["title"] for x in songs)
         pages["music"] = dict(pages["music"], description="Johnny Skyride · Johnny & The Bots — " + names,
@@ -212,6 +375,9 @@ def main():
         if not re.fullmatch(r"[a-z0-9-]+", slug): sys.exit(f"bad product slug: {slug}")
         p = dict(p, path=f"/store/{slug}/")
         doc = META_RE.sub(lambda _: meta_block("store", p), store_doc, count=1)
+        hero = {"skyforge": "sf-hero", "skyforge-mobile": "sm-hero"}.get(slug)
+        if hero:   # this product's big picture is on the first screen here: load it now, not lazily
+            doc = re.sub(rf'(<img class="sf-hero" id="{hero}"[^>]*?) loading="lazy"', r'\1 fetchpriority="high"', doc, count=1)
         os.makedirs(os.path.join(ROOT, "store", slug), exist_ok=True)
         open(os.path.join(ROOT, "store", slug, "index.html"), "w", encoding="utf-8").write(doc)
         written.append(f"store/{slug}/index.html")
@@ -220,7 +386,7 @@ def main():
     for x in songs:
         try:
             if x.get("cover_file"): img = write_og(x["slug"], open(x["cover_file"], "rb").read())
-            elif x.get("cover_path"): img = write_og(x["slug"], release_cover(src, x["cover_path"]))
+            elif x.get("cover_path"): img = write_og(x["slug"], covers.get(x["cover_path"]) or release_cover(src, x["cover_path"]))
             else: img = pages["music"]["image"]
         except Exception as e:
             print(f"warning: no card image for {x['slug']} ({e}); using the Music image")
