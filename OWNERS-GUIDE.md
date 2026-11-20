@@ -242,7 +242,7 @@ The Home page (johnnyskyride.com/) is a tile grid. The old feed (posts, replies,
 
 Anything dated in the future is skipped until that date, so timed releases take over the tile on their own. Items without a date are never featured.
 
-**Pinning the Featured tile:** to keep a music release in the Featured box when a newer item goes up, set `"featured": true` in that row's `data` JSON (Table Editor → `releases` → the row). The Music tile still shows the newest dated song. Only one pin is needed; if more than one row is pinned, the newest pinned item wins. To release the pin, remove `featured` from `data`. Yakoke is pinned this way so DadFunk (and later singles) can go live without taking over the home Featured tile.
+**Pinning the Featured tile:** to keep a music release in the Featured box when a newer item goes up, set `"featured": true` in that row's `data` JSON (Table Editor → `releases` → the row). The Music tile still shows the newest dated song. Only one pin is needed; if more than one row is pinned, the newest pinned item wins. To release the pin, remove `featured` from `data`. White Devil Days is pinned this way so later singles can go live without taking over the home Featured tile.
 
 **Adding a new item:** give it a date. For a timed single, the `release_at` you already set is enough. For a store item, add `"releasedAt": "YYYY-MM-DD"` (plus `label`, `featureImage`, `featureSub`) to its `jsr-products` entry. For a new collection, add `releasedAt` to it. For a hand-added song, add `data-released="YYYY-MM-DD"` to its `<div class="song">`. Then run `python3 tools/build-pages.py` and commit.
 
